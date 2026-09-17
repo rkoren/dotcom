@@ -3,7 +3,7 @@
 Personal project portal — a static site that renders public JSON published by my
 other projects.
 
-Live at: _(pending first deploy)_
+Live at: https://main.d8uzh33r2jpoz.amplifyapp.com
 
 ## What's here
 

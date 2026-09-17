@@ -1,5 +1,6 @@
 .DS_Store
 .claude/settings.local.json
 
-# Local-only test suite — run with ./tests/run.sh, not committed.
+# Local-only, not committed.
+CLAUDE.md
 tests/
