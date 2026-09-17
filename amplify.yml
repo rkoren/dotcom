@@ -1,0 +1,14 @@
+# Static site. No build step by design — see CLAUDE.md.
+# Data is fetched client-side from public S3 JSON, so a deploy never depends on
+# any scraper being healthy.
+version: 1
+frontend:
+  phases:
+    build:
+      commands: []
+  artifacts:
+    baseDirectory: site
+    files:
+      - "**/*"
+  cache:
+    paths: []

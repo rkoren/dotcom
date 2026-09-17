@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CBB Model &mdash; Gameday</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<p class="nav"><a href="../">&laquo; rkoren</a></p>
+<h1>CBB Model</h1>
+<p class="sub">
+  College basketball score predictions, scored against the KenPom line.
+</p>
+<hr>
+
+<div class="state" id="loading">Loading&hellip;</div>
+<div class="state err" id="error" hidden></div>
+
+<div id="content" hidden>
+  <div class="controls">
+    <label>Date
+      <select id="date"></select>
+    </label>
+    <label><input type="checkbox" id="kponly"> KenPom-covered only</label>
+    <span class="muted" id="count"></span>
+  </div>
+
+  <table id="board">
+    <thead>
+      <tr>
+        <th data-key="away">Away</th>
+        <th data-key="home">Home</th>
+        <th class="num" data-key="ourAway">Proj A</th>
+        <th class="num" data-key="ourHome">Proj H</th>
+        <th class="num" data-key="ourMargin">Our line</th>
+        <th class="num" data-key="kpMargin">KenPom</th>
+        <th class="num" data-key="gapMargin">Gap</th>
+        <th class="num" data-key="ourProb">Win %</th>
+        <th class="num" data-key="actualMargin">Final</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <p class="stale" id="updated"></p>
+</div>
+
+<hr>
+<p class="sub" id="note"></p>
+
+<script src="../lib.js"></script>
+<script src="./app.js"></script>
+
+</body>
+</html>

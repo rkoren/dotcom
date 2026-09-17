@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vegas to Fantasy</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<p class="nav"><a href="../">&laquo; rkoren</a></p>
+<h1>Vegas to Fantasy</h1>
+<p class="sub">
+  NFL fantasy projections derived from sportsbook player props, de-vigged and pooled
+  across books.
+</p>
+<hr>
+
+<div class="state" id="loading">Loading&hellip;</div>
+<div class="state err" id="error" hidden></div>
+
+<div id="content" hidden>
+  <div class="controls">
+    <label>Scoring
+      <select id="profile">
+        <option value="half_ppr">Half PPR</option>
+        <option value="ppr">PPR</option>
+        <option value="standard">Standard</option>
+      </select>
+    </label>
+    <label>Position
+      <select id="pos">
+        <option value="">All</option>
+        <option>QB</option><option>RB</option><option>WR</option><option>TE</option>
+      </select>
+    </label>
+    <label>Team <input id="team" size="8" placeholder="SEA,NE"></label>
+    <label><input type="checkbox" id="hideincomplete"> Hide TD-only</label>
+    <span class="muted" id="count"></span>
+  </div>
+
+  <h2 id="weekhdr">Weekly projections</h2>
+  <table id="board">
+    <thead>
+      <tr>
+        <th data-key="name">Player</th>
+        <th data-key="position">Pos</th>
+        <th data-key="team">Team</th>
+        <th data-key="opponent">Opp</th>
+        <th class="num" data-key="total">Pts</th>
+        <th class="num" data-key="p20">Floor</th>
+        <th class="num" data-key="p80">Ceiling</th>
+        <th class="nosort">Compare</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <h2>Compare</h2>
+  <p class="sub" id="cmphint">Select up to 8 players above.</p>
+  <div id="compare"></div>
+
+  <p class="stale" id="updated"></p>
+</div>
+
+<hr>
+<p class="sub" id="note"></p>
+
+<script src="../lib.js"></script>
+<script src="./week.js"></script>
+<script src="./compare.js"></script>
+
+</body>
+</html>

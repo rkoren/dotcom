@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rkoren</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<h1>rkoren</h1>
+<p class="sub">Personal projects that scrape things and show you the results.</p>
+<hr>
+
+<h2>Projects</h2>
+<ul>
+  <li>
+    <a href="./dimaggio/">DiMaggio Watch</a> &mdash;
+    longest active MLB hitting streaks, and the chase toward 56.
+    <span class="stale" id="st-dimaggio"></span>
+  </li>
+  <li>
+    <a href="./cbb/">CBB Model</a> &mdash;
+    college basketball score predictions, scored against KenPom.
+    <span class="stale" id="st-cbb"></span>
+  </li>
+  <li>
+    <a href="./v2f/">Vegas to Fantasy</a> &mdash;
+    NFL fantasy projections derived from sportsbook player props.
+    <span class="stale" id="st-v2f"></span>
+  </li>
+</ul>
+
+<hr>
+<p class="sub">
+  Each page reads a public JSON file published by that project's own pipeline.
+  If a page shows an error, its scraper is down &mdash; the site is fine.
+</p>
+
+<script src="./lib.js"></script>
+<script>
+/* One-line liveness per project.
+
+   Two distinct non-live states, deliberately styled differently:
+     pending  -> feed not published yet (expected; muted, not an error)
+     offline  -> feed should be up and isn't (red; something is broken)
+   Collapsing these would paint the page red for work that simply isn't done. */
+(function () {
+  var SOURCES = [
+    { id: "st-dimaggio", url: "https://dimaggio-watch-data-674325521451.s3.us-east-1.amazonaws.com/streaks.json" },
+    { id: "st-cbb", pending: "feed not published yet" },
+    { id: "st-v2f", pending: "feed not published yet" }
+  ];
+  SOURCES.forEach(function (s) {
+    var node = el(s.id);
+    if (!node) return;
+    if (s.pending) {
+      node.innerHTML = '<span class="muted">&mdash; ' + s.pending + "</span>";
+      return;
+    }
+    fetchJSON(s.url)
+      .then(function (d) { node.textContent = "\u2014 " + agoText(d.generatedAt); })
+      .catch(function () { node.innerHTML = '<span class="err">&mdash; offline</span>'; });
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DiMaggio Watch</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<p class="nav"><a href="../">&laquo; rkoren</a></p>
+<h1>DiMaggio Watch</h1>
+<p class="sub">
+  Longest <em>active</em> hitting streaks in MLB, and the chase toward Joe DiMaggio's
+  <strong>56</strong> (1941).
+</p>
+<hr>
+
+<div class="state" id="loading">Loading&hellip;</div>
+<div class="state err" id="error" hidden></div>
+
+<div id="content" hidden>
+  <p id="lead"></p>
+
+  <table id="board">
+    <thead>
+      <tr>
+        <th class="num" data-key="rank">#</th>
+        <th data-key="name">Player</th>
+        <th data-key="team">Team</th>
+        <th class="num" data-key="streak">Streak</th>
+        <th data-key="startDate">Started</th>
+        <th data-key="lastHitDate">Last hit</th>
+        <th class="num" data-key="gamesToRecord">To 56</th>
+        <th class="nosort">State</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <p class="stale" id="updated"></p>
+  <p class="sub" id="record"></p>
+</div>
+
+<hr>
+<p class="sub">
+  Computed from official regular-season at-bats via the public MLB Stats API. A game with no
+  official at-bats (all walks, sacrifice bunt, hit-by-pitch) does not break a streak.
+  Not affiliated with MLB.
+</p>
+
+<script src="../lib.js"></script>
+<script src="./app.js"></script>
+
+</body>
+</html>
