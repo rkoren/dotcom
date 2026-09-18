@@ -81,8 +81,8 @@ function renderCompare() {
   if (selected.length < 2) {
     hint.textContent =
       selected.length === 0
-        ? "Tick up to " + MAX_COMPARE + " players above."
-        : "Tick at least one more player to compare.";
+        ? "Search for a player, or tick one in the table below (up to " + MAX_COMPARE + ")."
+        : "Tick or search one more player to compare.";
     return;
   }
   hint.innerHTML =
