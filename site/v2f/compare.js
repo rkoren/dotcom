@@ -1,18 +1,4 @@
-/* Head-to-head compare
-
-   The API builds its pairwise win matrix from per-player Monte Carlo samples drawn
-   with independent seeds, and reports it as "independent between players". Under
-   that same assumption P(A beats B) is recoverable from the two players'
-   histograms alone:
-
-     P(A > B) = sum_i histA[i] * (sum_{j<i} histB[j])  +  0.5 * sum_i histA[i] * histB[i]
-
-   So publishing one histogram per player makes ANY subset comparable, instead of
-   needing a server round-trip per combination.
-
-   Approximation: the server compares raw float samples, this compares 1-point bins,
-   so ties inside a bin take 0.5 weight. Measured against /api/compare on the week-2
-   top 8: mean 0.35pt, worst 0.95pt. Halve binWidth upstream if that ever matters. */
+/* Head-to-head compare */
 
 var MAX_COMPARE = 8;
 var selected = [];   /* player_ids, in pick order */
@@ -140,10 +126,6 @@ function distributionChart(picks, byId) {
   return out.join("");
 }
 
-
-/* Cell formatters, kept separate from the raw values so the "who leads" comparison can be
-   made on what is actually DISPLAYED. Comparing raw floats would occasionally bold one of
-   two cells that both read "12.3", which looks like a bug. */
 function pts1(v) { return v === null || v === undefined ? "" : num(v, 1); }
 function pct0(v) { return v === null || v === undefined ? "" : Math.round(v * 100) + "%"; }
 
@@ -169,8 +151,7 @@ function renderCompare() {
       "Search for a player, or tick one in the table below (up to " + MAX_COMPARE + ").";
     return;
   }
-  /* One player is enough to render: seeing a single column makes it obvious what a
-     second one will add, rather than leaving an empty panel until you guess. */
+
   hint.innerHTML =
     selected.length + " selected (max " + MAX_COMPARE + "). " +
     (selected.length === 1 ? "Add another to compare head-to-head. " : "") +
@@ -186,8 +167,7 @@ function renderCompare() {
     return;
   }
 
-  /* Transposed: players as columns, metrics as rows. Every metric here is
-     higher-is-better, so the leader per row is simply the max. */
+  /* Transposed: players as columns, metrics as rows.*/
   var metrics = [
     ["Projected",     function (r, h) { return r.total; },              pts1],
     ["Floor (p20)",   function (r, h) { return pctile(h, 0.2, bw); },   pts1],
@@ -210,8 +190,7 @@ function renderCompare() {
     var lead = leaders(shown);
     t.push("<tr><td>" + m[0] + "</td>");
     shown.forEach(function (cell, i) {
-      /* Bold every cell tied at the top — claiming a single winner when two are level
-         would be a lie the reader can see. With one player there is nothing to lead. */
+      /* Bold every cell tied at the top */
       var win = picks.length > 1 && lead.indexOf(i) >= 0;
       t.push("<td class='num" + (win ? " best" : "") + "'>" +
         (win ? "<strong>" + cell + "</strong>" : cell) + "</td>");
@@ -223,9 +202,7 @@ function renderCompare() {
   t.push("<h2>Projected point distribution</h2>");
   t.push(distributionChart(picks, byId));
 
-  /* Head to head. With exactly two players a matrix states one fact twice and pads it
-     with two dashes ("52%" and "48%" are the same number), so say it in a sentence
-     instead. The grid only earns its space once there are pairs worth scanning. */
+  /* Head to head. */
   if (picks.length === 2) {
     var pa = byId[picks[0]] || { name: picks[0] };
     var pb = byId[picks[1]] || { name: picks[1] };
@@ -281,11 +258,7 @@ function renderCompare() {
 }
 
 
-/* ---------------------------------------------------------------- player search
-
-   Every player for the active profile is already in memory, so this filters locally
-   rather than calling an API.
- */
+/* ---------------------------------------------------------------- player search*/
 
 var MAX_RESULTS = 8;
 
@@ -295,7 +268,6 @@ var TIER = {
   LAST_PREFIX: 0.9,
   OTHER_PREFIX: 0.8,
   FIRST_PREFIX: 0.7,
-  FIELD_EXACT: 0.95,
   LAST_SUB: 0.5,
   FIRST_SUB: 0.4,
   ANY: 0.25
@@ -325,10 +297,14 @@ function buildSearchIndex(rows) {
   });
 }
 
-/* Best tier this one term achieves against one player; 0 means no match at all. */
+/* An exact team or position hit */
+function fieldMatch(ix, t) {
+  return ix.team === t || ix.pos === t;
+}
+
+/* Best tier this one term achieves against a player's NAME; 0 means no name match. */
 function termTier(ix, t) {
   if (ix.full === t) return TIER.EXACT;
-  if (ix.team === t || ix.pos === t) return TIER.FIELD_EXACT;
   if (ix.last.indexOf(t) === 0) return TIER.LAST_PREFIX;
   for (var i = 0; i < ix.mid.length; i++) {
     if (ix.mid[i].indexOf(t) === 0) return TIER.OTHER_PREFIX;
@@ -348,27 +324,26 @@ function searchMatches(q) {
 
   for (var i = 0; i < searchIndex.length; i++) {
     var ix = searchIndex[i];
-    /* Every term must hit something — "justin jeff" should not match Justin Fields. */
-    var sum = 0, ok = true;
+    var sum = 0, nameHits = 0, ok = true;
     for (var j = 0; j < terms.length; j++) {
       var tier = termTier(ix, terms[j]);
-      if (!tier) { ok = false; break; }
-      sum += tier;
+      if (tier) { sum += tier; nameHits++; continue; }
+      if (fieldMatch(ix, terms[j])) continue;
+      ok = false;
+      break;
     }
-    if (!ok) continue;
+    if (!ok || !nameHits) continue;
     var quality = bestPoints > 0 ? (ix.row.total || 0) / bestPoints : 0;
-    out.push({ row: ix.row, score: sum / terms.length + QUALITY_WEIGHT * quality });
+    out.push({ row: ix.row, score: sum / nameHits + QUALITY_WEIGHT * quality });
   }
 
   out.sort(function (a, b) {
     if (b.score !== a.score) return b.score - a.score;
-    return (b.row.total || 0) - (a.row.total || 0);   /* stable, explainable tiebreak */
+    return (b.row.total || 0) - (a.row.total || 0);
   });
   return out.map(function (m) { return m.row; });
 }
 
-/* The selection shows up in four places (table, picked row, search results, compare
-   panel). Refresh them together rather than at each call site, or one drifts. */
 function refreshSelection() {
   drawRows();
   renderPicked();
@@ -376,16 +351,13 @@ function refreshSelection() {
   renderCompare();
 }
 
-/* Search rows toggle, they do not only add: the box shows current state, so unticking
-   removes. Returns false when a pick was refused (the cap). */
 function toggleFromSearch(pid, on) {
   var ok = toggleSelected(pid, on);
   refreshSelection();
   return ok;
 }
 
-/* The picked row exists so a player can be removed without searching for him again --
-   the compare table names him, but nothing there is a control. */
+/* The picked row exists so a player can be removed without searching for him again */
 function renderPicked() {
   var box = el("picked");
   if (!box) return;
@@ -425,7 +397,6 @@ function renderSearch() {
   var t = ["<table><tbody>"];
   matches.slice(0, MAX_RESULTS).forEach(function (r) {
     var on = isSelected(r.player_id);
-    /* Same control as the table below, so "how do I pick someone" has one answer. */
     t.push("<tr>" +
       '<td><label><input type="checkbox" data-add="' + r.player_id + '"' +
         (on ? " checked" : "") + (!on && selectionFull() ? " disabled" : "") +
@@ -444,7 +415,6 @@ function renderSearch() {
 }
 
 function bindSearch() {
-  /* Unticking in the picked row removes; rebuilt on every change, so listen on the box. */
   var picked = el("picked");
   if (picked) {
     picked.addEventListener("change", function (e) {
@@ -464,7 +434,7 @@ function bindSearch() {
     var m = searchMatches(input.value).filter(function (r) { return !isSelected(r.player_id); });
     if (m.length && !selectionFull()) toggleFromSearch(m[0].player_id, true);
   });
-  /* Results are rebuilt on every keystroke, so listen on the container. */
+
   el("psearchresults").addEventListener("change", function (e) {
     var pid = e.target && e.target.getAttribute && e.target.getAttribute("data-add");
     if (!pid) return;
