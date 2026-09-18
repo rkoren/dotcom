@@ -20,9 +20,18 @@ function weekDir(season, week) {
 
 function pts(v) { return v === null || v === undefined ? "" : num(v, 1); }
 
+/* A played player's actual score, coloured against the projection he closed at:
+   beating it is the interesting outcome. Blank until the stats land. */
+function actualCell(r) {
+  if (r.actual === null || r.actual === undefined) return "";
+  var beat = (r.total || 0) > 0 && r.actual >= r.total;
+  return '<span class="' + (beat ? "live" : "muted") + '">' + num(r.actual, 1) + "</span>";
+}
+
 /* Only the flags a reader can act on; the rest are model diagnostics. */
 function notes(r) {
   var out = [];
+  if (r.played) out.push('<span class="muted">played</span>');
   if (r.incomplete) out.push('<span class="jeopardy">TD only</span>');
   if (r.injury_status) out.push('<span class="live">' + r.injury_status + "</span>");
   if ((r.flags || []).indexOf("book_disagree") >= 0) out.push('<span class="muted">books differ</span>');
@@ -43,6 +52,7 @@ function drawRows() {
       "<td>" + (r.team || "") + "</td>" +
       "<td>" + (r.opponent || "") + "</td>" +
       '<td class="num"><strong>' + pts(r.total) + "</strong></td>" +
+      '<td class="num">' + actualCell(r) + "</td>" +
       '<td class="num">' + pts(r.p20) + "</td>" +
       '<td class="num">' + pts(r.p80) + "</td>" +
       "<td>" + notes(r) + "</td>";
@@ -56,12 +66,14 @@ function applyFilters() {
   var teams = el("team").value.toUpperCase().split(/[,\s]+/).filter(Boolean);
   var min = parseFloat(el("minpts").value);
   var hideInc = el("hideincomplete").checked;
+  var hidePlayed = el("hideplayed").checked;
 
   shown = all.filter(function (r) {
     if (pos && r.position !== pos) return false;
     if (teams.length && teams.indexOf((r.team || "").toUpperCase()) < 0) return false;
     if (!isNaN(min) && (r.total || 0) < min) return false;
     if (hideInc && r.incomplete) return false;
+    if (hidePlayed && r.played) return false;
     return true;
   });
   if (sortState && sortState.key) sortRows(shown, sortState.key, sortState.dir);
@@ -80,6 +92,7 @@ function render(season, week, proj, dists) {
   }
   setDists(dists);
   all = proj.players || [];
+  buildSearchIndex(all);   /* name parts + the points scale the ranking normalises against */
   el("weekhdr").textContent =
     "Week " + week + " projections — " + season + " (" + proj.profile + ")";
   renderUpdated("updated", proj.generatedAt);
@@ -117,7 +130,7 @@ el("profile").addEventListener("change", function () {
   show("loading");
   loadProfile();
 });
-["pos", "team", "minpts", "hideincomplete"].forEach(function (id) {
+["pos", "team", "minpts", "hideincomplete", "hideplayed"].forEach(function (id) {
   var ev = id === "team" || id === "minpts" ? "input" : "change";
   el(id).addEventListener(ev, applyFilters);
 });
