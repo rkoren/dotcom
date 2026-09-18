@@ -141,6 +141,45 @@ function leaders(shown) {
   return out;
 }
 
+
+/* ---------------------------------------------------------------- start order
+
+   A pairwise grid shows N*(N-1) numbers and leaves the reader to rank them. The actual
+   question is "who do I start, in what order", so answer that directly and keep the grid
+   as detail underneath.
+
+   Two columns, because they answer different questions:
+     beatsField — how often this player outscores a randomly chosen rival in the group.
+                  The honest ordering metric; it generalises the head-to-head sentence.
+     pBest      — how often he is the TOP scorer of the group. This is upside: a boom/bust
+                  player can lead here while losing the average matchup. */
+
+function beatsField(pid, picks) {
+  var others = picks.filter(function (p) { return p !== pid; });
+  if (!others.length) return null;
+  var sum = 0;
+  others.forEach(function (o) { sum += beats(dists.hist[pid], dists.hist[o]); });
+  return sum / others.length;
+}
+
+/* P(this player is the group's high scorer). Walks the shared bin grid once, carrying
+   each rival's mass strictly below the current bin; ties inside a bin split 0.5, the same
+   convention beats() uses, so the two columns stay consistent. Sums to ~1 across a group. */
+function pBest(pid, picks) {
+  var h = dists.hist[pid];
+  var others = picks.filter(function (p) { return p !== pid; })
+                    .map(function (p) { return dists.hist[p]; });
+  var below = others.map(function () { return 0; });
+  var total = 0;
+  for (var i = 0; i < h.length; i++) {
+    var prod = 1;
+    for (var k = 0; k < others.length; k++) prod *= below[k] + 0.5 * (others[k][i] || 0);
+    total += (h[i] || 0) * prod;
+    for (var k2 = 0; k2 < others.length; k2++) below[k2] += others[k2][i] || 0;
+  }
+  return total;
+}
+
 function renderCompare() {
   var box = el("compare");
   var hint = el("cmphint");
@@ -216,9 +255,37 @@ function renderCompare() {
       t.push('<p class="sub">Effectively a coin flip.</p>');
     }
   } else if (picks.length > 2) {
-    t.push("<h2>Head to head</h2>");
-    t.push('<p class="sub">Each cell is the chance the player on the left outscores the ' +
-      "player along the top. Bold means better than even.</p>");
+    var ranked = picks.map(function (p) {
+      return { id: p, field: beatsField(p, picks), best: pBest(p, picks) };
+    }).sort(function (a, b) { return b.field - a.field; });
+
+    t.push("<h2>Start order</h2>");
+    t.push('<p class="sub">Ranked by how often each player outscores the others. ' +
+      "&ldquo;Best of group&rdquo; is how often he finishes top &mdash; upside, which can " +
+      "disagree with the ranking for a boom-or-bust player.</p>");
+    t.push("<table><thead><tr>" +
+      "<th class='nosort num'>#</th><th class='nosort'>Player</th>" +
+      "<th class='nosort num'>Proj</th><th class='nosort num'>Beats the field</th>" +
+      "<th class='nosort num'>Best of group</th></tr></thead><tbody>");
+    var topBest = Math.max.apply(null, ranked.map(function (x) { return x.best; }));
+    ranked.forEach(function (x, i) {
+      var r = byId[x.id] || { name: x.id };
+      var upside = x.best === topBest && ranked[0].id !== x.id;
+      t.push("<tr>" +
+        "<td class='num'>" + (i + 1) + "</td>" +
+        "<td>" + (i === 0 ? "<strong>" + r.name + "</strong>" : r.name) +
+          "<span class='muted'> " + (r.position || "") + " " + (r.team || "") + "</span></td>" +
+        "<td class='num'>" + num(r.total, 1) + "</td>" +
+        "<td class='num" + (i === 0 ? " best" : "") + "'>" +
+          Math.round(x.field * 100) + "%</td>" +
+        "<td class='num" + (upside ? " best" : "") + "'>" + Math.round(x.best * 100) + "%</td>" +
+        "</tr>");
+    });
+    t.push("</tbody></table>");
+
+    /* The grid still helps for a specific matchup, so keep it — one level down. */
+    t.push("<details><summary>Full pairwise grid</summary>");
+    t.push('<p class="sub">Chance the player on the left outscores the player along the top.</p>');
     t.push("<table><thead><tr><th class='nosort'>beats &rarr;</th>");
     picks.forEach(function (p) {
       t.push("<th class='nosort'>" + ((byId[p] || {}).name || p) + "</th>");
@@ -234,7 +301,7 @@ function renderCompare() {
       });
       t.push("</tr>");
     });
-    t.push("</tbody></table>");
+    t.push("</tbody></table></details>");
   }
 
   if (picks.length > 1) {
