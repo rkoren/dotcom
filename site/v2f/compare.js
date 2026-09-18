@@ -73,20 +73,89 @@ function rowsById() {
   return m;
 }
 
+
+/* ---------------------------------------------------------------- distribution chart
+
+   The published histograms are already the shape of a density curve, so plotting them
+   needs no library and no extra data — one polyline per player over the shared bin grid.
+   Inline SVG keeps it in the no-build spirit; ~40 lines against ~500KB of recharts.
+
+   The x-range is trimmed to where the selected players actually have mass, otherwise a
+   fixed 0..80 grid squeezes every curve into the left third and they all look identical. */
+
+var CHART_W = 620, CHART_H = 150, PAD_L = 30, PAD_B = 22, PAD_T = 8;
+
+function chartRange(hists) {
+  /* First and last bin holding non-trivial mass for anyone, padded a little. */
+  var lo = Infinity, hi = 0;
+  hists.forEach(function (h) {
+    for (var i = 0; i < h.length; i++) {
+      if (h[i] > 0.001) { if (i < lo) lo = i; if (i > hi) hi = i; }
+    }
+  });
+  if (lo === Infinity) return [0, 1];
+  return [Math.max(0, lo - 1), hi + 1];
+}
+
+function distributionChart(picks, byId) {
+  var hists = picks.map(function (p) { return dists.hist[p]; });
+  var r = chartRange(hists), lo = r[0], hi = r[1];
+  var bw = (dists && dists.binWidth) || 1;
+  var peak = 0;
+  hists.forEach(function (h) {
+    for (var i = lo; i <= hi; i++) if ((h[i] || 0) > peak) peak = h[i];
+  });
+  if (!peak) return "";
+
+  var plotW = CHART_W - PAD_L - 6, plotH = CHART_H - PAD_B - PAD_T;
+  var x = function (i) { return PAD_L + ((i - lo) / (hi - lo || 1)) * plotW; };
+  var y = function (v) { return PAD_T + plotH - (v / peak) * plotH; };
+
+  var out = ['<svg class="dist" width="' + CHART_W + '" height="' + CHART_H +
+             '" role="img" aria-label="Projected point distributions">'];
+  out.push('<line class="axis" x1="' + PAD_L + '" y1="' + (PAD_T + plotH) +
+           '" x2="' + (PAD_L + plotW) + '" y2="' + (PAD_T + plotH) + '"/>');
+
+  /* x ticks every 5 points, which is a readable granularity for fantasy scoring. */
+  for (var b = Math.ceil(lo / 5) * 5; b <= hi; b += 5) {
+    out.push('<line class="tick" x1="' + x(b) + '" y1="' + (PAD_T + plotH) +
+             '" x2="' + x(b) + '" y2="' + (PAD_T + plotH + 3) + '"/>');
+    out.push('<text class="tlab" x="' + x(b) + '" y="' + (CHART_H - 8) +
+             '" text-anchor="middle">' + Math.round(b * bw) + "</text>");
+  }
+
+  hists.forEach(function (h, n) {
+    var pts = [];
+    for (var i = lo; i <= hi; i++) pts.push(x(i).toFixed(1) + "," + y(h[i] || 0).toFixed(1));
+    out.push('<polyline class="c' + (n % 8) + '" points="' + pts.join(" ") + '"/>');
+  });
+  out.push("</svg>");
+
+  out.push('<p class="legend">');
+  picks.forEach(function (p, n) {
+    out.push('<span class="c' + (n % 8) + '">&#9632;</span> ' + ((byId[p] || {}).name || p) + " ");
+  });
+  out.push("</p>");
+  out.push('<p class="sub">Share of simulated outcomes at each point total. ' +
+           "Taller and narrower is a safer floor; a long right tail is upside.</p>");
+  return out.join("");
+}
+
 function renderCompare() {
   var box = el("compare");
   var hint = el("cmphint");
   box.innerHTML = "";
 
-  if (selected.length < 2) {
+  if (!selected.length) {
     hint.textContent =
-      selected.length === 0
-        ? "Search for a player, or tick one in the table below (up to " + MAX_COMPARE + ")."
-        : "Tick or search one more player to compare.";
+      "Search for a player, or tick one in the table below (up to " + MAX_COMPARE + ").";
     return;
   }
+  /* One player is enough to render: seeing a single column makes it obvious what a
+     second one will add, rather than leaving an empty panel until you guess. */
   hint.innerHTML =
     selected.length + " selected (max " + MAX_COMPARE + "). " +
+    (selected.length === 1 ? "Add another to compare head-to-head. " : "") +
     '<a href="#" id="clearcmp">clear</a>';
 
   var byId = rowsById();
@@ -94,8 +163,8 @@ function renderCompare() {
   var picks = selected.filter(function (p) { return dists && dists.hist[p]; });
   var missing = selected.filter(function (p) { return !(dists && dists.hist[p]); });
 
-  if (picks.length < 2) {
-    box.innerHTML = '<p class="sub">Not enough distribution data for the selected players.</p>';
+  if (!picks.length) {
+    box.innerHTML = '<p class="sub">No distribution published for the selected player(s).</p>';
     return;
   }
 
@@ -126,7 +195,11 @@ function renderCompare() {
   });
   t.push("</tbody></table>");
 
-  /* Pairwise win probabilities. */
+  t.push("<h2>Projected point distribution</h2>");
+  t.push(distributionChart(picks, byId));
+
+  /* Pairwise win probabilities — only meaningful once there are two. */
+  if (picks.length > 1) {
   t.push("<h2>Chance the row player outscores the column player</h2>");
   t.push("<table><thead><tr><th class='nosort'>&nbsp;</th>");
   picks.forEach(function (p) {
@@ -148,6 +221,7 @@ function renderCompare() {
   t.push('<p class="sub">From ' + (dists.draws || "?") +
     " Monte Carlo draws per player, independent between players, binned to " +
     bw + " point" + (bw === 1 ? "" : "s") + ".</p>");
+  }
 
   if (missing.length) {
     t.push('<p class="sub">No distribution published for ' + missing.length +
@@ -233,7 +307,6 @@ function searchMatches(q) {
 
   for (var i = 0; i < searchIndex.length; i++) {
     var ix = searchIndex[i];
-    if (isSelected(ix.row.player_id)) continue;   /* already picked */
     /* Every term must hit something — "justin jeff" should not match Justin Fields. */
     var sum = 0, ok = true;
     for (var j = 0; j < terms.length; j++) {
@@ -253,11 +326,14 @@ function searchMatches(q) {
   return out.map(function (m) { return m.row; });
 }
 
-function addFromSearch(pid) {
-  if (!toggleSelected(pid, true)) return;
+/* Search rows toggle, they do not only add: the box shows current state, so unticking
+   removes. Returns false when a pick was refused (the cap). */
+function toggleFromSearch(pid, on) {
+  var ok = toggleSelected(pid, on);
   drawRows();        /* keep the table's checkboxes in step */
   renderCompare();
-  renderSearch();    /* the added player drops out of the results */
+  renderSearch();
+  return ok;
 }
 
 function renderSearch() {
@@ -270,11 +346,9 @@ function renderSearch() {
   var matches = searchMatches(q);
   box.innerHTML = "";
 
-  if (selectionFull()) {
-    note.textContent = "8 selected — remove one to add another.";
-    return;
-  }
-  note.textContent = "";
+  note.textContent = selectionFull()
+    ? MAX_COMPARE + " selected — untick one to add another."
+    : "";
 
   if (!q.trim()) return;
   if (!matches.length) {
@@ -284,8 +358,12 @@ function renderSearch() {
 
   var t = ["<table><tbody>"];
   matches.slice(0, MAX_RESULTS).forEach(function (r) {
+    var on = isSelected(r.player_id);
+    /* Same control as the table below, so "how do I pick someone" has one answer. */
     t.push("<tr>" +
-      '<td><a href="#" data-add="' + r.player_id + '">' + r.name + "</a></td>" +
+      '<td><label><input type="checkbox" data-add="' + r.player_id + '"' +
+        (on ? " checked" : "") + (!on && selectionFull() ? " disabled" : "") +
+        "> " + r.name + "</label></td>" +
       "<td>" + (r.position || "") + "</td>" +
       "<td>" + (r.team || "") + "</td>" +
       "<td>" + (r.opponent || "") + "</td>" +
@@ -306,14 +384,13 @@ function bindSearch() {
   input.addEventListener("keydown", function (e) {
     if (e.key !== "Enter") return;
     e.preventDefault();
-    var m = searchMatches(input.value);
-    if (m.length && !selectionFull()) addFromSearch(m[0].player_id);
+    var m = searchMatches(input.value).filter(function (r) { return !isSelected(r.player_id); });
+    if (m.length && !selectionFull()) toggleFromSearch(m[0].player_id, true);
   });
   /* Results are rebuilt on every keystroke, so listen on the container. */
-  el("psearchresults").addEventListener("click", function (e) {
+  el("psearchresults").addEventListener("change", function (e) {
     var pid = e.target && e.target.getAttribute && e.target.getAttribute("data-add");
     if (!pid) return;
-    e.preventDefault();
-    addFromSearch(pid);
+    if (!toggleFromSearch(pid, e.target.checked)) e.target.checked = false;
   });
 }
