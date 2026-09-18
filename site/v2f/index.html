@@ -34,7 +34,8 @@
         <option>QB</option><option>RB</option><option>WR</option><option>TE</option>
       </select>
     </label>
-    <label>Team <input id="team" size="8" placeholder="SEA,NE"></label>
+    <label>Team <input id="team" size="10" placeholder="SEA,NE"></label>
+    <label>Min pts <input id="minpts" size="4" value="0"></label>
     <label><input type="checkbox" id="hideincomplete"> Hide TD-only</label>
     <span class="muted" id="count"></span>
   </div>
@@ -43,32 +44,37 @@
   <table id="board">
     <thead>
       <tr>
+        <th class="nosort">Cmp</th>
         <th data-key="name">Player</th>
         <th data-key="position">Pos</th>
         <th data-key="team">Team</th>
         <th data-key="opponent">Opp</th>
         <th class="num" data-key="total">Pts</th>
         <th class="num" data-key="p20">Floor</th>
-        <th class="num" data-key="p80">Ceiling</th>
-        <th class="nosort">Compare</th>
+        <th class="num" data-key="p80">Ceil</th>
+        <th class="nosort">Notes</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
 
   <h2>Compare</h2>
-  <p class="sub" id="cmphint">Select up to 8 players above.</p>
+  <p class="sub" id="cmphint">Tick up to 8 players above.</p>
   <div id="compare"></div>
 
   <p class="stale" id="updated"></p>
 </div>
 
 <hr>
-<p class="sub" id="note"></p>
+<p class="sub" id="note">
+  Projections are implied by sportsbook player props, de-vigged and pooled across books.
+  &ldquo;TD only&rdquo; means just touchdown odds are posted for that player so far, so the
+  points shown are a floor rather than a projection.
+</p>
 
 <script src="../lib.js"></script>
-<script src="./week.js"></script>
 <script src="./compare.js"></script>
+<script src="./week.js"></script>
 
 </body>
 </html>
