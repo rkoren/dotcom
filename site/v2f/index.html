@@ -37,6 +37,7 @@
     <label>Team <input id="team" size="10" placeholder="SEA,NE"></label>
     <label>Min pts <input id="minpts" size="4" value="0"></label>
     <label><input type="checkbox" id="hideincomplete"> Hide TD-only</label>
+    <label><input type="checkbox" id="hideplayed"> Hide played</label>
     <span class="muted" id="count"></span>
   </div>
 
@@ -62,7 +63,8 @@
         <th data-key="position">Pos</th>
         <th data-key="team">Team</th>
         <th data-key="opponent">Opp</th>
-        <th class="num" data-key="total">Pts</th>
+        <th class="num" data-key="total">Proj</th>
+        <th class="num" data-key="actual">Actual</th>
         <th class="num" data-key="p20">Floor</th>
         <th class="num" data-key="p80">Ceil</th>
         <th class="nosort">Notes</th>
@@ -78,7 +80,9 @@
 <p class="sub" id="note">
   Projections are implied by sportsbook player props, de-vigged and pooled across books.
   &ldquo;TD only&rdquo; means just touchdown odds are posted for that player so far, so the
-  points shown are a floor rather than a projection.
+  points shown are a floor rather than a projection. Once a game kicks off the books pull
+  its props, so those players keep their last pre-kickoff projection &mdash; their
+  <em>closing line</em> &mdash; and gain an actual score as results come in.
 </p>
 
 <script src="../lib.js"></script>

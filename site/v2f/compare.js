@@ -1,4 +1,4 @@
-/* Head-to-head compare, computed entirely in the browser.
+/* Head-to-head compare
 
    The API builds its pairwise win matrix from per-player Monte Carlo samples drawn
    with independent seeds, and reports it as "independent between players". Under
@@ -169,28 +169,88 @@ function renderCompare() {
 /* ---------------------------------------------------------------- player search
 
    Every player for the active profile is already in memory, so this filters locally
-   rather than calling an API. Its real purpose is reaching players the table's
-   filters have hidden: with "Position: QB" set you can still search a running back
-   and compare across them. Searching therefore ignores the filters entirely. */
+   rather than calling an API.
+ */
 
 var MAX_RESULTS = 8;
 
+/* Ranking: score = matchTier + QUALITY_WEIGHT * (points / bestPoints) */
+var TIER = {
+  EXACT: 1.0,
+  LAST_PREFIX: 0.9,
+  OTHER_PREFIX: 0.8,
+  FIRST_PREFIX: 0.7,
+  FIELD_EXACT: 0.95,
+  LAST_SUB: 0.5,
+  FIRST_SUB: 0.4,
+  ANY: 0.25
+};
+var QUALITY_WEIGHT = 0.35;
+var SUFFIXES = { jr: 1, "jr.": 1, sr: 1, "sr.": 1, ii: 1, iii: 1, iv: 1, v: 1 };
+var searchIndex = null;
+var bestPoints = 0;
+
+function buildSearchIndex(rows) {
+  bestPoints = 0;
+  searchIndex = rows.map(function (r) {
+    var name = (r.name || "").toLowerCase();
+    var tokens = name.split(/\s+/).filter(Boolean);
+    var meaningful = tokens.filter(function (t) { return !SUFFIXES[t]; });
+    if (!meaningful.length) meaningful = tokens;
+    if ((r.total || 0) > bestPoints) bestPoints = r.total || 0;
+    return {
+      row: r,
+      full: name,
+      first: meaningful[0] || "",
+      last: meaningful[meaningful.length - 1] || "",
+      mid: meaningful.slice(1, -1),
+      team: (r.team || "").toLowerCase(),
+      pos: (r.position || "").toLowerCase()
+    };
+  });
+}
+
+/* Best tier this one term achieves against one player; 0 means no match at all. */
+function termTier(ix, t) {
+  if (ix.full === t) return TIER.EXACT;
+  if (ix.team === t || ix.pos === t) return TIER.FIELD_EXACT;
+  if (ix.last.indexOf(t) === 0) return TIER.LAST_PREFIX;
+  for (var i = 0; i < ix.mid.length; i++) {
+    if (ix.mid[i].indexOf(t) === 0) return TIER.OTHER_PREFIX;
+  }
+  if (ix.first.indexOf(t) === 0) return TIER.FIRST_PREFIX;
+  if (ix.last.indexOf(t) > 0) return TIER.LAST_SUB;
+  if (ix.first.indexOf(t) > 0) return TIER.FIRST_SUB;
+  if (ix.full.indexOf(t) >= 0) return TIER.ANY;
+  return 0;
+}
+
 function searchMatches(q) {
   q = q.trim().toLowerCase();
-  if (!q) return [];
-  var terms = q.split(/\s+/);
-  return all.filter(function (r) {
-    if (isSelected(r.player_id)) return false;   /* already picked — nothing to add */
-    var hay = ((r.name || "") + " " + (r.position || "") + " " + (r.team || "")).toLowerCase();
-    return terms.every(function (t) { return hay.indexOf(t) >= 0; });
-  }).sort(function (a, b) {
-    /* Someone typing a name wants the player they meant, and among near-matches the
-       higher-projected one is the likelier intent. */
-    var an = (a.name || "").toLowerCase(), bn = (b.name || "").toLowerCase();
-    var aStarts = an.indexOf(terms[0]) === 0, bStarts = bn.indexOf(terms[0]) === 0;
-    if (aStarts !== bStarts) return aStarts ? -1 : 1;
-    return (b.total || 0) - (a.total || 0);
+  if (!q || !searchIndex) return [];
+  var terms = q.split(/\s+/).filter(Boolean);
+  var out = [];
+
+  for (var i = 0; i < searchIndex.length; i++) {
+    var ix = searchIndex[i];
+    if (isSelected(ix.row.player_id)) continue;   /* already picked */
+    /* Every term must hit something — "justin jeff" should not match Justin Fields. */
+    var sum = 0, ok = true;
+    for (var j = 0; j < terms.length; j++) {
+      var tier = termTier(ix, terms[j]);
+      if (!tier) { ok = false; break; }
+      sum += tier;
+    }
+    if (!ok) continue;
+    var quality = bestPoints > 0 ? (ix.row.total || 0) / bestPoints : 0;
+    out.push({ row: ix.row, score: sum / terms.length + QUALITY_WEIGHT * quality });
+  }
+
+  out.sort(function (a, b) {
+    if (b.score !== a.score) return b.score - a.score;
+    return (b.row.total || 0) - (a.row.total || 0);   /* stable, explainable tiebreak */
   });
+  return out.map(function (m) { return m.row; });
 }
 
 function addFromSearch(pid) {
