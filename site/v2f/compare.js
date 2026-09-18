@@ -136,9 +136,27 @@ function distributionChart(picks, byId) {
     out.push('<span class="c' + (n % 8) + '">&#9632;</span> ' + ((byId[p] || {}).name || p) + " ");
   });
   out.push("</p>");
-  out.push('<p class="sub">Share of simulated outcomes at each point total. ' +
-           "Taller and narrower is a safer floor; a long right tail is upside.</p>");
+  out.push('<p class="sub">Share of simulated outcomes at each point total</p>');
   return out.join("");
+}
+
+
+/* Cell formatters, kept separate from the raw values so the "who leads" comparison can be
+   made on what is actually DISPLAYED. Comparing raw floats would occasionally bold one of
+   two cells that both read "12.3", which looks like a bug. */
+function pts1(v) { return v === null || v === undefined ? "" : num(v, 1); }
+function pct0(v) { return v === null || v === undefined ? "" : Math.round(v * 100) + "%"; }
+
+/* Indices of the highest displayed value; every metric in the table is higher-is-better. */
+function leaders(shown) {
+  var best = null, out = [];
+  shown.forEach(function (cell, i) {
+    var v = parseFloat(cell);
+    if (isNaN(v)) return;
+    if (best === null || v > best) { best = v; out = [i]; }
+    else if (v === best) out.push(i);
+  });
+  return out;
 }
 
 function renderCompare() {
@@ -168,15 +186,16 @@ function renderCompare() {
     return;
   }
 
-  /* Transposed: players as columns, metrics as rows. */
+  /* Transposed: players as columns, metrics as rows. Every metric here is
+     higher-is-better, so the leader per row is simply the max. */
   var metrics = [
-    ["Projected", function (r, h) { return num(r.total, 1); }],
-    ["Floor (p20)", function (r, h) { return num(pctile(h, 0.2, bw), 1); }],
-    ["Median (p50)", function (r, h) { return num(pctile(h, 0.5, bw), 1); }],
-    ["Ceiling (p80)", function (r, h) { return num(pctile(h, 0.8, bw), 1); }],
-    ["P(15+ pts)", function (r, h) { return Math.round(atLeast(h, 15, bw) * 100) + "%"; }],
-    ["P(20+ pts)", function (r, h) { return Math.round(atLeast(h, 20, bw) * 100) + "%"; }],
-    ["P(25+ pts)", function (r, h) { return Math.round(atLeast(h, 25, bw) * 100) + "%"; }]
+    ["Projected",     function (r, h) { return r.total; },              pts1],
+    ["Floor (p20)",   function (r, h) { return pctile(h, 0.2, bw); },   pts1],
+    ["Median (p50)",  function (r, h) { return pctile(h, 0.5, bw); },   pts1],
+    ["Ceiling (p80)", function (r, h) { return pctile(h, 0.8, bw); },   pts1],
+    ["P(15+ pts)",    function (r, h) { return atLeast(h, 15, bw); },   pct0],
+    ["P(20+ pts)",    function (r, h) { return atLeast(h, 20, bw); },   pct0],
+    ["P(25+ pts)",    function (r, h) { return atLeast(h, 25, bw); },   pct0]
   ];
 
   var t = ["<table><thead><tr><th class='nosort'>&nbsp;</th>"];
@@ -187,9 +206,15 @@ function renderCompare() {
   });
   t.push("</tr></thead><tbody>");
   metrics.forEach(function (m) {
+    var shown = picks.map(function (p) { return m[2](m[1](byId[p] || {}, dists.hist[p])); });
+    var lead = leaders(shown);
     t.push("<tr><td>" + m[0] + "</td>");
-    picks.forEach(function (p) {
-      t.push("<td class='num'>" + m[1](byId[p] || {}, dists.hist[p]) + "</td>");
+    shown.forEach(function (cell, i) {
+      /* Bold every cell tied at the top — claiming a single winner when two are level
+         would be a lie the reader can see. With one player there is nothing to lead. */
+      var win = picks.length > 1 && lead.indexOf(i) >= 0;
+      t.push("<td class='num" + (win ? " best" : "") + "'>" +
+        (win ? "<strong>" + cell + "</strong>" : cell) + "</td>");
     });
     t.push("</tr>");
   });
@@ -233,9 +258,7 @@ function renderCompare() {
   if (clear) clear.addEventListener("click", function (e) {
     e.preventDefault();
     selected = [];
-    drawRows();
-    renderCompare();
-    renderSearch();
+    refreshSelection();
   });
 }
 
@@ -326,14 +349,39 @@ function searchMatches(q) {
   return out.map(function (m) { return m.row; });
 }
 
+/* The selection shows up in four places (table, picked row, search results, compare
+   panel). Refresh them together rather than at each call site, or one drifts. */
+function refreshSelection() {
+  drawRows();
+  renderPicked();
+  renderSearch();
+  renderCompare();
+}
+
 /* Search rows toggle, they do not only add: the box shows current state, so unticking
    removes. Returns false when a pick was refused (the cap). */
 function toggleFromSearch(pid, on) {
   var ok = toggleSelected(pid, on);
-  drawRows();        /* keep the table's checkboxes in step */
-  renderCompare();
-  renderSearch();
+  refreshSelection();
   return ok;
+}
+
+/* The picked row exists so a player can be removed without searching for him again --
+   the compare table names him, but nothing there is a control. */
+function renderPicked() {
+  var box = el("picked");
+  if (!box) return;
+  if (!selected.length) { box.innerHTML = ""; return; }
+  var byId = rowsById();
+  var t = ['<div class="controls"><span class="muted">Selected:</span> '];
+  selected.forEach(function (pid) {
+    var r = byId[pid] || { name: pid };
+    t.push('<label><input type="checkbox" checked data-pick="' + pid + '"> ' +
+      r.name + '<span class="muted">' +
+      (r.position ? " " + r.position : "") + (r.team ? " " + r.team : "") + "</span></label> ");
+  });
+  t.push("</div>");
+  box.innerHTML = t.join("");
 }
 
 function renderSearch() {
@@ -378,6 +426,17 @@ function renderSearch() {
 }
 
 function bindSearch() {
+  /* Unticking in the picked row removes; rebuilt on every change, so listen on the box. */
+  var picked = el("picked");
+  if (picked) {
+    picked.addEventListener("change", function (e) {
+      var pid = e.target && e.target.getAttribute && e.target.getAttribute("data-pick");
+      if (!pid) return;
+      toggleSelected(pid, e.target.checked);
+      refreshSelection();
+    });
+  }
+
   var input = el("psearch");
   if (!input) return;
   input.addEventListener("input", renderSearch);

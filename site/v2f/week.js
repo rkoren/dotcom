@@ -101,8 +101,9 @@ function render(season, week, proj, dists) {
     sortState = makeSortable(el("board"), function () { return shown; }, drawRows);
   }
   applyFilters();
-  renderCompare();
+  renderPicked();
   renderSearch();   /* `all` was just replaced — rerun against the new profile */
+  renderCompare();
 
   hide("loading");
   hide("error");
@@ -140,8 +141,7 @@ el("rows").addEventListener("change", function (e) {
   var pid = e.target && e.target.getAttribute && e.target.getAttribute("data-pid");
   if (!pid) return;
   if (!toggleSelected(pid, e.target.checked)) e.target.checked = false;
-  renderCompare();
-  renderSearch();   /* an unticked player becomes searchable again */
+  refreshSelection();
 });
 
 bindSearch();
