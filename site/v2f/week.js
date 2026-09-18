@@ -89,6 +89,7 @@ function render(season, week, proj, dists) {
   }
   applyFilters();
   renderCompare();
+  renderSearch();   /* `all` was just replaced — rerun against the new profile */
 
   hide("loading");
   hide("error");
@@ -127,6 +128,9 @@ el("rows").addEventListener("change", function (e) {
   if (!pid) return;
   if (!toggleSelected(pid, e.target.checked)) e.target.checked = false;
   renderCompare();
+  renderSearch();   /* an unticked player becomes searchable again */
 });
+
+bindSearch();
 
 boot();

@@ -9,7 +9,7 @@
 <body>
 
 <h1>rkoren</h1>
-<p class="sub">Personal projects that scrape things and show you the results.</p>
+<p class="sub">Personal projects that scrape things</p>
 <hr>
 
 <h2>Projects</h2>
@@ -32,10 +32,6 @@
 </ul>
 
 <hr>
-<p class="sub">
-  Each page reads a public JSON file published by that project's own pipeline.
-  If a page shows an error, its scraper is down &mdash; the site is fine.
-</p>
 
 <script src="./lib.js"></script>
 <script>
@@ -48,7 +44,7 @@
 (function () {
   var SOURCES = [
     { id: "st-dimaggio", url: "https://dimaggio-watch-data-674325521451.s3.us-east-1.amazonaws.com/streaks.json" },
-    { id: "st-cbb", pending: "feed not published yet" },
+    { id: "st-cbb", url: "https://reilly-cbb-model-data.s3.us-east-1.amazonaws.com/public/latest.json" },
     { id: "st-v2f", url: "https://v2f-674325521451-us-east-1-an.s3.us-east-1.amazonaws.com/v2f/public/latest.json" }
   ];
   SOURCES.forEach(function (s) {

@@ -34,6 +34,8 @@ function toggleSelected(pid, on) {
   return true;
 }
 
+function selectionFull() { return selected.length >= MAX_COMPARE; }
+
 function beats(histA, histB) {
   /* Iterate the longer grid: if histB ran past histA, B's tail mass would be
      dropped and P(A>B) overstated. Published histograms share a bin grid, so
@@ -159,5 +161,99 @@ function renderCompare() {
     selected = [];
     drawRows();
     renderCompare();
+    renderSearch();
+  });
+}
+
+
+/* ---------------------------------------------------------------- player search
+
+   Every player for the active profile is already in memory, so this filters locally
+   rather than calling an API. Its real purpose is reaching players the table's
+   filters have hidden: with "Position: QB" set you can still search a running back
+   and compare across them. Searching therefore ignores the filters entirely. */
+
+var MAX_RESULTS = 8;
+
+function searchMatches(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return [];
+  var terms = q.split(/\s+/);
+  return all.filter(function (r) {
+    if (isSelected(r.player_id)) return false;   /* already picked — nothing to add */
+    var hay = ((r.name || "") + " " + (r.position || "") + " " + (r.team || "")).toLowerCase();
+    return terms.every(function (t) { return hay.indexOf(t) >= 0; });
+  }).sort(function (a, b) {
+    /* Someone typing a name wants the player they meant, and among near-matches the
+       higher-projected one is the likelier intent. */
+    var an = (a.name || "").toLowerCase(), bn = (b.name || "").toLowerCase();
+    var aStarts = an.indexOf(terms[0]) === 0, bStarts = bn.indexOf(terms[0]) === 0;
+    if (aStarts !== bStarts) return aStarts ? -1 : 1;
+    return (b.total || 0) - (a.total || 0);
+  });
+}
+
+function addFromSearch(pid) {
+  if (!toggleSelected(pid, true)) return;
+  drawRows();        /* keep the table's checkboxes in step */
+  renderCompare();
+  renderSearch();    /* the added player drops out of the results */
+}
+
+function renderSearch() {
+  var input = el("psearch");
+  var box = el("psearchresults");
+  var note = el("psearchnote");
+  if (!input || !box) return;
+
+  var q = input.value;
+  var matches = searchMatches(q);
+  box.innerHTML = "";
+
+  if (selectionFull()) {
+    note.textContent = "8 selected — remove one to add another.";
+    return;
+  }
+  note.textContent = "";
+
+  if (!q.trim()) return;
+  if (!matches.length) {
+    box.innerHTML = '<p class="sub">No player matches &ldquo;' + q + "&rdquo;.</p>";
+    return;
+  }
+
+  var t = ["<table><tbody>"];
+  matches.slice(0, MAX_RESULTS).forEach(function (r) {
+    t.push("<tr>" +
+      '<td><a href="#" data-add="' + r.player_id + '">' + r.name + "</a></td>" +
+      "<td>" + (r.position || "") + "</td>" +
+      "<td>" + (r.team || "") + "</td>" +
+      "<td>" + (r.opponent || "") + "</td>" +
+      '<td class="num">' + num(r.total, 1) + "</td>" +
+      "</tr>");
+  });
+  t.push("</tbody></table>");
+  if (matches.length > MAX_RESULTS) {
+    t.push('<p class="sub">' + (matches.length - MAX_RESULTS) + " more — keep typing.</p>");
+  }
+  box.innerHTML = t.join("");
+}
+
+function bindSearch() {
+  var input = el("psearch");
+  if (!input) return;
+  input.addEventListener("input", renderSearch);
+  input.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    var m = searchMatches(input.value);
+    if (m.length && !selectionFull()) addFromSearch(m[0].player_id);
+  });
+  /* Results are rebuilt on every keystroke, so listen on the container. */
+  el("psearchresults").addEventListener("click", function (e) {
+    var pid = e.target && e.target.getAttribute && e.target.getAttribute("data-add");
+    if (!pid) return;
+    e.preventDefault();
+    addFromSearch(pid);
   });
 }
