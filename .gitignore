@@ -4,3 +4,6 @@
 # Local-only, not committed.
 CLAUDE.md
 tests/
+site/assets/*.jpg
+site/assets/*.png
+site/assets/me.png
