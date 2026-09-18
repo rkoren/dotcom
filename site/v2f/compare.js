@@ -223,29 +223,47 @@ function renderCompare() {
   t.push("<h2>Projected point distribution</h2>");
   t.push(distributionChart(picks, byId));
 
-  /* Pairwise win probabilities — only meaningful once there are two. */
-  if (picks.length > 1) {
-  t.push("<h2>Chance the row player outscores the column player</h2>");
-  t.push("<table><thead><tr><th class='nosort'>&nbsp;</th>");
-  picks.forEach(function (p) {
-    t.push("<th class='nosort'>" + ((byId[p] || {}).name || p) + "</th>");
-  });
-  t.push("</tr></thead><tbody>");
-  picks.forEach(function (a) {
-    t.push("<tr><td>" + ((byId[a] || {}).name || a) + "</td>");
-    picks.forEach(function (b) {
-      if (a === b) { t.push("<td class='num muted'>&mdash;</td>"); return; }
-      var v = beats(dists.hist[a], dists.hist[b]);
-      var cell = Math.round(v * 100) + "%";
-      t.push("<td class='num'>" + (v > 0.5 ? "<strong>" + cell + "</strong>" : cell) + "</td>");
+  /* Head to head. With exactly two players a matrix states one fact twice and pads it
+     with two dashes ("52%" and "48%" are the same number), so say it in a sentence
+     instead. The grid only earns its space once there are pairs worth scanning. */
+  if (picks.length === 2) {
+    var pa = byId[picks[0]] || { name: picks[0] };
+    var pb = byId[picks[1]] || { name: picks[1] };
+    var pw = beats(dists.hist[picks[0]], dists.hist[picks[1]]);
+    var lead = pw >= 0.5 ? [pa, pb, pw] : [pb, pa, 1 - pw];
+    t.push("<h2>Head to head</h2>");
+    t.push('<p class="h2h"><strong>' + lead[0].name + "</strong> outscores " +
+      lead[1].name + " in <strong>" + Math.round(lead[2] * 100) +
+      "%</strong> of simulations.</p>");
+    if (Math.round(lead[2] * 100) === 50) {
+      t.push('<p class="sub">Effectively a coin flip.</p>');
+    }
+  } else if (picks.length > 2) {
+    t.push("<h2>Head to head</h2>");
+    t.push('<p class="sub">Each cell is the chance the player on the left outscores the ' +
+      "player along the top. Bold means better than even.</p>");
+    t.push("<table><thead><tr><th class='nosort'>beats &rarr;</th>");
+    picks.forEach(function (p) {
+      t.push("<th class='nosort'>" + ((byId[p] || {}).name || p) + "</th>");
     });
-    t.push("</tr>");
-  });
-  t.push("</tbody></table>");
+    t.push("</tr></thead><tbody>");
+    picks.forEach(function (a) {
+      t.push("<tr><td>" + ((byId[a] || {}).name || a) + "</td>");
+      picks.forEach(function (b) {
+        if (a === b) { t.push("<td class='num muted'>&mdash;</td>"); return; }
+        var v = beats(dists.hist[a], dists.hist[b]);
+        var cell = Math.round(v * 100) + "%";
+        t.push("<td class='num'>" + (v > 0.5 ? "<strong>" + cell + "</strong>" : cell) + "</td>");
+      });
+      t.push("</tr>");
+    });
+    t.push("</tbody></table>");
+  }
 
-  t.push('<p class="sub">From ' + (dists.draws || "?") +
-    " Monte Carlo draws per player, independent between players, binned to " +
-    bw + " point" + (bw === 1 ? "" : "s") + ".</p>");
+  if (picks.length > 1) {
+    t.push('<p class="sub">From ' + (dists.draws || "?") +
+      " Monte Carlo draws per player, independent between players, binned to " +
+      bw + " point" + (bw === 1 ? "" : "s") + ".</p>");
   }
 
   if (missing.length) {
