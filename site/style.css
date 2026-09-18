@@ -50,3 +50,4 @@ svg.dist polyline { fill: none; stroke-width: 1.5; }
 .c5, svg.dist .c5 { color: #008899; stroke: #008899; }
 .c6, svg.dist .c6 { color: #aa0077; stroke: #aa0077; }
 .c7, svg.dist .c7 { color: #555555; stroke: #555555; }
+td.best { background: #eef6ee; }
