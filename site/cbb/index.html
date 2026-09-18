@@ -19,9 +19,20 @@
 <div class="state err" id="error" hidden></div>
 
 <div id="content" hidden>
+  <p id="seasonnote" class="sub"></p>
+
   <div class="controls">
     <label>Date
       <select id="date"></select>
+    </label>
+    <button id="prev" type="button">&laquo; prev</button>
+    <button id="next" type="button">next &raquo;</button>
+    <label>Show
+      <select id="gender">
+        <option value="">All</option>
+        <option value="M">Men</option>
+        <option value="W">Women</option>
+      </select>
     </label>
     <label><input type="checkbox" id="kponly"> KenPom-covered only</label>
     <span class="muted" id="count"></span>
@@ -30,25 +41,38 @@
   <table id="board">
     <thead>
       <tr>
-        <th data-key="away">Away</th>
-        <th data-key="home">Home</th>
-        <th class="num" data-key="ourAway">Proj A</th>
-        <th class="num" data-key="ourHome">Proj H</th>
+        <th data-key="matchup">Matchup</th>
+        <th class="nosort">Gd</th>
+        <th class="num nosort">Our score</th>
         <th class="num" data-key="ourMargin">Our line</th>
         <th class="num" data-key="kpMargin">KenPom</th>
         <th class="num" data-key="gapMargin">Gap</th>
-        <th class="num" data-key="ourProb">Win %</th>
-        <th class="num" data-key="actualMargin">Final</th>
+        <th class="num" data-key="ourProb">P(win)</th>
+        <th class="num nosort">Final</th>
+        <th class="nosort">Call</th>
       </tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
 
+  <h2>Season accuracy vs KenPom</h2>
+  <p class="sub" id="metricsnote"></p>
+  <div id="metrics"></div>
+
   <p class="stale" id="updated"></p>
 </div>
 
 <hr>
-<p class="sub" id="note"></p>
+<p class="sub">
+  Predictions are walk-forward &mdash; leave-one-season-out out-of-fold for past seasons and a
+  held-out season for the most recent, so no game is scored by a model that saw it.
+  &ldquo;Visitor @ Home&rdquo; means the venue is known &mdash; that is tonight&rsquo;s board.
+  &ldquo;A vs B&rdquo; means it is not: archived games are ordered by team id because the
+  predictions log carries no home/away flag, so no home-court framing is implied. Either way
+  margins, <code>P(win)</code> and the gap are relative to the <em>home</em> team where there
+  is one, and otherwise to the first team named. Per-team scores are derived from the predicted
+  margin and total, so they reconstruct the line rather than being predicted directly.
+</p>
 
 <script src="../lib.js"></script>
 <script src="./app.js"></script>
