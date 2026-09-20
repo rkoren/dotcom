@@ -20,6 +20,31 @@ function weekDir(season, week) {
 
 function pts(v) { return v === null || v === undefined ? "" : num(v, 1); }
 
+/* Expected stats, in the order the grouped header declares them. Whole numbers for
+   counting stats that run large (yards), one decimal where the fraction carries meaning
+   — 0.6 expected TDs is a different bet from 1.4. */
+var STAT_COLS = [
+  ["pass_yds", 0], ["pass_tds", 1], ["pass_int", 1],
+  ["rush_att", 1], ["rush_yds", 0],
+  ["rec", 1],      ["rec_yds", 0],
+  ["any_td", 1]
+];
+
+/* A zero here means "this stat does not apply to him", not "we project zero" — a WR has
+   no carries priced. Blank reads as inapplicable; 0.0 would read as a real projection. */
+function statCell(v, dp) {
+  return v === null || v === undefined || v === 0 ? "" : num(v, dp);
+}
+
+/* Sorting reads top-level keys, so lift stats out of their nested object once per load
+   rather than teaching the sorter to walk paths. */
+function flattenStats(rows) {
+  rows.forEach(function (r) {
+    var st = r.stats || {};
+    STAT_COLS.forEach(function (c) { r["s_" + c[0]] = st[c[0]] === undefined ? null : st[c[0]]; });
+  });
+}
+
 /* A played player's actual score, coloured against the projection he closed at:
    beating it is the interesting outcome. Blank until the stats land. */
 function actualCell(r) {
@@ -55,6 +80,9 @@ function drawRows() {
       '<td class="num">' + actualCell(r) + "</td>" +
       '<td class="num">' + pts(r.p20) + "</td>" +
       '<td class="num">' + pts(r.p80) + "</td>" +
+      STAT_COLS.map(function (c) {
+        return '<td class="num stat">' + statCell(r["s_" + c[0]], c[1]) + "</td>";
+      }).join("") +
       "<td>" + notes(r) + "</td>";
     tbody.appendChild(tr);
   });
@@ -92,6 +120,7 @@ function render(season, week, proj, dists) {
   }
   setDists(dists);
   all = proj.players || [];
+  flattenStats(all);
   buildSearchIndex(all);   /* name parts + the points scale the ranking normalises against */
   el("weekhdr").textContent =
     "Week " + week + " projections — " + season + " (" + proj.profile + ")";

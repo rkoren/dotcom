@@ -54,3 +54,7 @@ td.best { background: #eef6ee; }
 .h2h { font-size: 13px; margin: 4px 0; }
 details { margin: 6px 0; font-size: 12px; }
 details summary { cursor: pointer; color: #0000ee; }
+
+/* Stat columns are reference detail, so let the projection columns carry the eye. */
+tr.grp th { background: #cccccc; font-size: 11px; }
+td.stat { color: #444; }
