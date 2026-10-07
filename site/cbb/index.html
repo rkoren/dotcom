@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CBB Model &mdash; Gameday</title>
+<link rel="canonical" href="https://rkoren.com/cbb/">
 <link rel="icon" type="image/png" sizes="64x64" href="../assets/cbb-64.png">
 <link rel="apple-touch-icon" sizes="180x180" href="../assets/cbb-180.png">
 <link rel="stylesheet" href="../style.css">
@@ -13,7 +14,7 @@
 <p class="nav"><a href="../">&laquo; rkoren</a></p>
 <h1>CBB Model</h1>
 <p class="sub">
-  College basketball score predictions, scored against the KenPom line.
+  College basketball score predictions, scored against KenPom
 </p>
 <hr>
 
@@ -65,16 +66,6 @@
 </div>
 
 <hr>
-<p class="sub">
-  Predictions are walk-forward &mdash; leave-one-season-out out-of-fold for past seasons and a
-  held-out season for the most recent, so no game is scored by a model that saw it.
-  &ldquo;Visitor @ Home&rdquo; means the venue is known &mdash; that is tonight&rsquo;s board.
-  &ldquo;A vs B&rdquo; means it is not: archived games are ordered by team id because the
-  predictions log carries no home/away flag, so no home-court framing is implied. Either way
-  margins, <code>P(win)</code> and the gap are relative to the <em>home</em> team where there
-  is one, and otherwise to the first team named. Per-team scores are derived from the predicted
-  margin and total, so they reconstruct the line rather than being predicted directly.
-</p>
 
 <script src="../lib.js"></script>
 <script src="./app.js"></script>

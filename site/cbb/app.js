@@ -1,13 +1,6 @@
-/* CBB gameday.
+// CBB gameday predictions
 
-   Reads the season archive published by `scripts/publish_public.py` in the cbb-model
-   repo. A whole season is 2.9 MB, so it is split one file per date: the index carries
-   the date list and the season accuracy table, and each night is fetched on demand.
-
-   Out of season this is the whole page. When the season starts the same per-date files
-   get refreshed nightly, and today's date simply becomes the newest entry. */
-
-var BASE = "https://reilly-cbb-model-data.s3.us-east-1.amazonaws.com/public";
+var BASE = "https://reilly-cbb-model-data.s3.us-east-1.amazonaws.com/public"; // bucket
 var LATEST_URL = BASE + "/latest.json";
 
 var index = null;     /* index.json for the active season */
@@ -17,13 +10,7 @@ var shown = [];       /* after filters — what the table renders */
 var sortState = null;
 var slateCache = {};  /* date -> games, so scrubbing back and forth doesn't refetch */
 
-/* The published game keeps predictions nested; flatten what the table sorts on.
-
-   Margin, prob and gap are always relative to "a" -- but what "a" IS depends on the
-   source. Archive games come from the predictions log, which has no venue column, so
-   dedupe_symmetric orders them A_TeamID < B_TeamID: deterministic but arbitrary, hence
-   "A vs B". Tonight's board comes from FanMatch, where the home team is known, so those
-   games carry home:"a" and render as "visitor @ home". */
+// flatten nested game predictions
 function flatten(g) {
   return {
     matchup: g.home === "a" ? g.b + " @ " + g.a
@@ -45,8 +32,7 @@ function score(a, b) {
   return a === null || a === undefined || b === null || b === undefined ? "" : a + "&ndash;" + b;
 }
 
-/* Did we call the winner? Only meaningful once a final exists.
-   `won === 1` means team "a" won, and a positive margin means we favoured "a". */
+// check if we got winner right
 function call(r) {
   if (r.won === null || r.won === undefined || r.ourMargin === null || r.ourMargin === undefined) {
     return "";
@@ -86,7 +72,7 @@ function applyFilters() {
   });
   if (sortState && sortState.key) sortRows(shown, sortState.key, sortState.dir);
   else {
-    /* Biggest disagreement with KenPom first — that's the interesting end of the slate. */
+    // show biggest disagreements first
     shown.sort(function (a, b) {
       return Math.abs(b.gapMargin || 0) - Math.abs(a.gapMargin || 0);
     });
@@ -106,7 +92,7 @@ function renderMetrics(metrics) {
       "<th class='nosort num'>Our acc</th><th class='nosort num'>KP acc</th></tr></thead><tbody>");
     grp.rows.forEach(function (r) {
       var u = r.us || {}, k = r.kp || {};
-      /* Lower margin error and Brier are better; higher accuracy is better. */
+      // lower margin of error and Brier is better
       function best(mine, theirs, lowerWins) {
         if (mine === null || theirs === null || mine === undefined || theirs === undefined) return "";
         var win = lowerWins ? mine < theirs : mine > theirs;
@@ -161,7 +147,7 @@ function render(idx) {
     o.value = d; o.textContent = d;
     sel.appendChild(o);
   });
-  /* Newest night first — in season that's tonight, out of season the last one played. */
+  // select newest night
   sel.selectedIndex = dates.length - 1;
 
   el("seasonnote").textContent =
