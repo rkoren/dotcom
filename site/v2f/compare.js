@@ -184,12 +184,9 @@ function renderCompare() {
   var t0 = [];
   var tdOnly = picks.filter(function (p) { return (byId[p] || {}).incomplete; });
   if (tdOnly.length) {
-    t0.push('<p class="warn-box"><strong>Floor, not a projection:</strong> ' +
+    t0.push('<p class="warn-box"><strong>NOTE:</strong> ' +
       tdOnly.map(function (p) { return (byId[p] || {}).name || p; }).join(", ") +
-      (tdOnly.length === 1 ? " has" : " have") +
-      " only touchdown odds posted so far. Everything below &mdash; percentiles, " +
-      "win probabilities, the distribution &mdash; is built from that floor and will " +
-      "understate " + (tdOnly.length === 1 ? "him" : "them") + ".</p>");
+      (tdOnly.length === 1 ? " only has" : " only have") + " TD odds</p>");
   }
 
   // make table
