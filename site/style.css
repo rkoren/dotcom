@@ -54,4 +54,15 @@ details summary { cursor: pointer; color: #0000ee; }
 
 tr.grp th { background: #cccccc; font-size: 11px; }
 td.stat { color: #444; }
-.warn-box { border: 1px solid #b36b00; background: #fff8e8; padding: 5px 8px; font-size: 12px; margin: 6px 0; }
+/* Shrink to the text instead of spanning the column, but never past the page rule above
+   it — inline-block sizes to content, max-width caps it at the container, which is the
+   same 1100px content box the <hr> spans. A long list of players wraps there. */
+.warn-box {
+  display: inline-block;
+  max-width: 100%;
+  border: 1px solid #b36b00;
+  background: #fff8e8;
+  padding: 5px 8px;
+  font-size: 12px;
+  margin: 6px 0;
+}
