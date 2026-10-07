@@ -3,12 +3,12 @@
 var BASE = "https://reilly-cbb-model-data.s3.us-east-1.amazonaws.com/public"; // bucket
 var LATEST_URL = BASE + "/latest.json";
 
-var index = null;     /* index.json for the active season */
+var index = null; // index.json for the active season
 var season = null;
-var games = [];       /* raw games for the selected date */
-var shown = [];       /* after filters — what the table renders */
+var games = []; // games for the selected date */
+var shown = []; // filtered games
 var sortState = null;
-var slateCache = {};  /* date -> games, so scrubbing back and forth doesn't refetch */
+var slateCache = {};  // date -> games to keep slate
 
 // flatten nested game predictions
 function flatten(g) {

@@ -1,13 +1,9 @@
-/* Shared helpers. Every page gets loading / error / stale states so a failed
-   fetch never renders a blank white page. See CLAUDE.md. */
-
+// shared helpers
 function el(id) { return document.getElementById(id); }
 
 function show(id) { var n = el(id); if (n) n.hidden = false; }
 function hide(id) { var n = el(id); if (n) n.hidden = true; }
 
-/* Fetch JSON, surfacing the URL on failure so a broken pipeline is diagnosable
-   from the page itself rather than the console. */
 function fetchJSON(url) {
   return fetch(url, { cache: "no-cache" }).then(function (res) {
     if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
@@ -29,7 +25,6 @@ function showError(err, url) {
   n.appendChild(c);
 }
 
-/* "updated 4m ago" — makes a dead pipeline obvious at a glance. */
 function agoText(iso) {
   if (!iso) return "";
   var then = new Date(iso).getTime();
@@ -48,8 +43,6 @@ function renderUpdated(id, iso) {
   if (n) n.textContent = agoText(iso);
 }
 
-/* Naive YYYY-MM-DD dates must be parsed component-wise. `new Date("2026-09-02")`
-   parses as UTC midnight and renders as the previous day west of Greenwich. */
 function parseDay(s) {
   if (!s) return null;
   var p = String(s).split("-");
@@ -69,7 +62,7 @@ function num(v, dp) {
   return isNaN(n) ? "" : n.toFixed(dp === undefined ? 1 : dp);
 }
 
-/* Sort an array of row objects in place. */
+// sort array of rows
 function sortRows(rows, key, dir) {
   rows.sort(function (a, b) {
     var x = a[key], y = b[key];
@@ -80,14 +73,7 @@ function sortRows(rows, key, dir) {
   });
 }
 
-/* Click-to-sort on any <th data-key>.
 
-   Bind ONCE at boot, not per render. `getRows` is a callback returning the
-   current array, so arriving data never needs a re-bind — re-binding would
-   stack a duplicate listener on every header each poll (60/hour on the idle
-   path), making one click run the sort dozens of times with unpredictable
-   direction. Returns the sort state so callers can re-apply the user's active
-   sort to fresh data. */
 function makeSortable(table, getRows, redraw) {
   var state = { key: null, dir: 1 };
   table.querySelectorAll("th[data-key]").forEach(function (th) {
