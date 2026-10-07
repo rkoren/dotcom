@@ -1,17 +1,13 @@
-/* Vegas to Fantasy — weekly view.
-
-   Reads the precomputed JSON published by `v2f publish` (see publish.py in the
-   vegas-to-fantasy repo). No server: the fitting and Monte Carlo already ran
-   upstream, so the page only filters, sorts and renders. */
+// weekly view
 
 var BASE =
   "https://v2f-674325521451-us-east-1-an.s3.us-east-1.amazonaws.com/v2f/public";
 var LATEST_URL = BASE + "/latest.json";
 
-var all = [];        /* every player for the active profile */
-var shown = [];      /* after filters — what the table renders, and what sorting mutates */
+var all = []; // all players with odds
+var shown = []; // add players after filters
 var sortState = null;
-var pointer = null;  /* {season, week} from latest.json */
+var pointer = null; // {season, week} from latest.json
 
 function weekDir(season, week) {
   var pad = week < 10 ? "0" + week : String(week);
@@ -20,9 +16,7 @@ function weekDir(season, week) {
 
 function pts(v) { return v === null || v === undefined ? "" : num(v, 1); }
 
-/* Expected stats, in the order the grouped header declares them. Whole numbers for
-   counting stats that run large (yards), one decimal where the fraction carries meaning
-   — 0.6 expected TDs is a different bet from 1.4. */
+// stats columns
 var STAT_COLS = [
   ["pass_yds", 0], ["pass_tds", 1], ["pass_int", 1],
   ["rush_att", 1], ["rush_yds", 0],
@@ -30,14 +24,12 @@ var STAT_COLS = [
   ["any_td", 1]
 ];
 
-/* A zero here means "this stat does not apply to him", not "we project zero" — a WR has
-   no carries priced. Blank reads as inapplicable; 0.0 would read as a real projection. */
+// mark off stats that aren't applied to players
 function statCell(v, dp) {
   return v === null || v === undefined || v === 0 ? "" : num(v, dp);
 }
 
-/* Sorting reads top-level keys, so lift stats out of their nested object once per load
-   rather than teaching the sorter to walk paths. */
+// make sortable by flattening
 function flattenStats(rows) {
   rows.forEach(function (r) {
     var st = r.stats || {};
@@ -45,15 +37,14 @@ function flattenStats(rows) {
   });
 }
 
-/* A played player's actual score, coloured against the projection he closed at:
-   beating it is the interesting outcome. Blank until the stats land. */
+// A player's actual score with shading based on the projection
 function actualCell(r) {
   if (r.actual === null || r.actual === undefined) return "";
   var beat = (r.total || 0) > 0 && r.actual >= r.total;
   return '<span class="' + (beat ? "live" : "muted") + '">' + num(r.actual, 1) + "</span>";
 }
 
-/* Only the flags a reader can act on; the rest are model diagnostics. */
+// player notes column
 function notes(r) {
   var out = [];
   if (r.played) out.push('<span class="muted">played</span>');
@@ -110,9 +101,6 @@ function applyFilters() {
 }
 
 function render(season, week, proj, dists) {
-  /* The win matrix assumes both files share a bin grid. They are published
-     together, but a mismatch would yield a plausible wrong number rather than an
-     error, so refuse instead of guessing. */
   if (dists.binWidth !== undefined && proj.profile !== dists.profile) {
     throw new Error(
       "profile mismatch: projections=" + proj.profile + " dists=" + dists.profile
@@ -121,7 +109,7 @@ function render(season, week, proj, dists) {
   setDists(dists);
   all = proj.players || [];
   flattenStats(all);
-  buildSearchIndex(all);   /* name parts + the points scale the ranking normalises against */
+  buildSearchIndex(all);
   el("weekhdr").textContent =
     "Week " + week + " projections — " + season + " (" + proj.profile + ")";
   renderUpdated("updated", proj.generatedAt);
@@ -131,7 +119,7 @@ function render(season, week, proj, dists) {
   }
   applyFilters();
   renderPicked();
-  renderSearch();   /* `all` was just replaced — rerun against the new profile */
+  renderSearch();
   renderCompare();
 
   hide("loading");
@@ -155,7 +143,7 @@ function boot() {
     .catch(function (err) { showError(err, LATEST_URL); });
 }
 
-/* Switching scoring reloads both files: points and distributions both change. */
+// switching scoring reloads
 el("profile").addEventListener("change", function () {
   show("loading");
   loadProfile();
@@ -165,7 +153,6 @@ el("profile").addEventListener("change", function () {
   el(id).addEventListener(ev, applyFilters);
 });
 
-/* Checkboxes are re-created on every draw, so listen on the table body. */
 el("rows").addEventListener("change", function (e) {
   var pid = e.target && e.target.getAttribute && e.target.getAttribute("data-pid");
   if (!pid) return;

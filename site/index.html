@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>rkoren</title>
+<link rel="canonical" href="https://rkoren.com/">
 <link rel="icon" type="image/png" sizes="64x64" href="./assets/me-64.png">
 <link rel="apple-touch-icon" sizes="180x180" href="./assets/me-180.png">
 <link rel="stylesheet" href="./style.css">
@@ -11,24 +12,23 @@
 <body>
 
 <h1>rkoren</h1>
-<p class="sub">Personal projects that scrape things</p>
 <hr>
 
-<h2>Projects</h2>
+<h2>Sports Trackers</h2>
 <ul>
   <li>
     <a href="./dimaggio/">DiMaggio Watch</a> &mdash;
-    longest active MLB hitting streaks, and the chase toward 56.
+    tracking longest active MLB hitting streaks
     <span class="stale" id="st-dimaggio"></span>
   </li>
   <li>
     <a href="./cbb/">CBB Model</a> &mdash;
-    college basketball score predictions, scored against KenPom.
+    college basketball score predictions compared to Kenpom
     <span class="stale" id="st-cbb"></span>
   </li>
   <li>
     <a href="./v2f/">Vegas to Fantasy</a> &mdash;
-    NFL fantasy projections derived from sportsbook player props.
+    fantasy football projections based on FD + DK player props
     <span class="stale" id="st-v2f"></span>
   </li>
 </ul>
@@ -37,12 +37,6 @@
 
 <script src="./lib.js"></script>
 <script>
-/* One-line liveness per project.
-
-   Two distinct non-live states, deliberately styled differently:
-     pending  -> feed not published yet (expected; muted, not an error)
-     offline  -> feed should be up and isn't (red; something is broken)
-   Collapsing these would paint the page red for work that simply isn't done. */
 (function () {
   var SOURCES = [
     { id: "st-dimaggio", url: "https://dimaggio-watch-data-674325521451.s3.us-east-1.amazonaws.com/streaks.json" },

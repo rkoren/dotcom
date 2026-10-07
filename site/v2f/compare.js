@@ -1,13 +1,12 @@
-/* Head-to-head compare */
-
+// compare players
 var MAX_COMPARE = 8;
-var selected = [];   /* player_ids, in pick order */
-var dists = null;    /* the dists_<profile>.json payload */
+var selected = [];  // players selected
+var dists = null;   // player distribution payloads
 
 function setDists(d) { dists = d; }
 function isSelected(pid) { return selected.indexOf(pid) >= 0; }
 
-/* Returns false when the pick was rejected, so the caller can untick the box. */
+// handle selecting and too many picks
 function toggleSelected(pid, on) {
   var i = selected.indexOf(pid);
   if (on) {
@@ -23,9 +22,7 @@ function toggleSelected(pid, on) {
 function selectionFull() { return selected.length >= MAX_COMPARE; }
 
 function beats(histA, histB) {
-  /* Iterate the longer grid: if histB ran past histA, B's tail mass would be
-     dropped and P(A>B) overstated. Published histograms share a bin grid, so
-     this is belt-and-braces. */
+  // make histograms and compare A and B
   var n = Math.max(histA.length, histB.length);
   var cum = 0, p = 0;
   for (var i = 0; i < n; i++) {
@@ -36,7 +33,7 @@ function beats(histA, histB) {
   return p;
 }
 
-/* P(points >= threshold) straight off the histogram. */
+// P(points >= threshold) using the histograms
 function atLeast(hist, threshold, binWidth) {
   var from = Math.ceil(threshold / binWidth);
   var p = 0;
@@ -59,20 +56,10 @@ function rowsById() {
   return m;
 }
 
-
-/* ---------------------------------------------------------------- distribution chart
-
-   The published histograms are already the shape of a density curve, so plotting them
-   needs no library and no extra data — one polyline per player over the shared bin grid.
-   Inline SVG keeps it in the no-build spirit; ~40 lines against ~500KB of recharts.
-
-   The x-range is trimmed to where the selected players actually have mass, otherwise a
-   fixed 0..80 grid squeezes every curve into the left third and they all look identical. */
-
+// make scoring distribution charts
 var CHART_W = 620, CHART_H = 150, PAD_L = 30, PAD_B = 22, PAD_T = 8;
 
 function chartRange(hists) {
-  /* First and last bin holding non-trivial mass for anyone, padded a little. */
   var lo = Infinity, hi = 0;
   hists.forEach(function (h) {
     for (var i = 0; i < h.length; i++) {
@@ -102,7 +89,7 @@ function distributionChart(picks, byId) {
   out.push('<line class="axis" x1="' + PAD_L + '" y1="' + (PAD_T + plotH) +
            '" x2="' + (PAD_L + plotW) + '" y2="' + (PAD_T + plotH) + '"/>');
 
-  /* x ticks every 5 points, which is a readable granularity for fantasy scoring. */
+  // add ticks for every 5 points
   for (var b = Math.ceil(lo / 5) * 5; b <= hi; b += 5) {
     out.push('<line class="tick" x1="' + x(b) + '" y1="' + (PAD_T + plotH) +
              '" x2="' + x(b) + '" y2="' + (PAD_T + plotH + 3) + '"/>');
@@ -129,7 +116,7 @@ function distributionChart(picks, byId) {
 function pts1(v) { return v === null || v === undefined ? "" : num(v, 1); }
 function pct0(v) { return v === null || v === undefined ? "" : Math.round(v * 100) + "%"; }
 
-/* Indices of the highest displayed value; every metric in the table is higher-is-better. */
+// mark highest displayed value for table
 function leaders(shown) {
   var best = null, out = [];
   shown.forEach(function (cell, i) {
@@ -141,19 +128,7 @@ function leaders(shown) {
   return out;
 }
 
-
-/* ---------------------------------------------------------------- start order
-
-   A pairwise grid shows N*(N-1) numbers and leaves the reader to rank them. The actual
-   question is "who do I start, in what order", so answer that directly and keep the grid
-   as detail underneath.
-
-   Two columns, because they answer different questions:
-     beatsField — how often this player outscores a randomly chosen rival in the group.
-                  The honest ordering metric; it generalises the head-to-head sentence.
-     pBest      — how often he is the TOP scorer of the group. This is upside: a boom/bust
-                  player can lead here while losing the average matchup. */
-
+// generate order of players on who to starts
 function beatsField(pid, picks) {
   var others = picks.filter(function (p) { return p !== pid; });
   if (!others.length) return null;
@@ -162,9 +137,7 @@ function beatsField(pid, picks) {
   return sum / others.length;
 }
 
-/* P(this player is the group's high scorer). Walks the shared bin grid once, carrying
-   each rival's mass strictly below the current bin; ties inside a bin split 0.5, the same
-   convention beats() uses, so the two columns stay consistent. Sums to ~1 across a group. */
+// P(this player is the compared highest scorer)
 function pBest(pid, picks) {
   var h = dists.hist[pid];
   var others = picks.filter(function (p) { return p !== pid; })
@@ -180,6 +153,7 @@ function pBest(pid, picks) {
   return total;
 }
 
+// show box
 function renderCompare() {
   var box = el("compare");
   var hint = el("cmphint");
@@ -206,7 +180,7 @@ function renderCompare() {
     return;
   }
 
-  /* Transposed: players as columns, metrics as rows.*/
+  // make table
   var metrics = [
     ["Projected",     function (r, h) { return r.total; },              pts1],
     ["Floor (p20)",   function (r, h) { return pctile(h, 0.2, bw); },   pts1],
@@ -229,7 +203,7 @@ function renderCompare() {
     var lead = leaders(shown);
     t.push("<tr><td>" + m[0] + "</td>");
     shown.forEach(function (cell, i) {
-      /* Bold every cell tied at the top */
+      // bold all if tied
       var win = picks.length > 1 && lead.indexOf(i) >= 0;
       t.push("<td class='num" + (win ? " best" : "") + "'>" +
         (win ? "<strong>" + cell + "</strong>" : cell) + "</td>");
@@ -241,7 +215,7 @@ function renderCompare() {
   t.push("<h2>Projected point distribution</h2>");
   t.push(distributionChart(picks, byId));
 
-  /* Head to head. */
+  // head to head compare
   if (picks.length === 2) {
     var pa = byId[picks[0]] || { name: picks[0] };
     var pb = byId[picks[1]] || { name: picks[1] };
@@ -283,7 +257,7 @@ function renderCompare() {
     });
     t.push("</tbody></table>");
 
-    /* The grid still helps for a specific matchup, so keep it — one level down. */
+    // grid
     t.push("<details><summary>Full pairwise grid</summary>");
     t.push('<p class="sub">Chance the player on the left outscores the player along the top.</p>');
     t.push("<table><thead><tr><th class='nosort'>beats &rarr;</th>");
@@ -325,11 +299,11 @@ function renderCompare() {
 }
 
 
-/* ---------------------------------------------------------------- player search*/
+// searching players
 
 var MAX_RESULTS = 8;
 
-/* Ranking: score = matchTier + QUALITY_WEIGHT * (points / bestPoints) */
+// filter players in search results with weighting
 var TIER = {
   EXACT: 1.0,
   LAST_PREFIX: 0.9,
@@ -364,12 +338,11 @@ function buildSearchIndex(rows) {
   });
 }
 
-/* An exact team or position hit */
 function fieldMatch(ix, t) {
   return ix.team === t || ix.pos === t;
 }
 
-/* Best tier this one term achieves against a player's NAME; 0 means no name match. */
+// filter based on tier of matches in search
 function termTier(ix, t) {
   if (ix.full === t) return TIER.EXACT;
   if (ix.last.indexOf(t) === 0) return TIER.LAST_PREFIX;
@@ -424,7 +397,6 @@ function toggleFromSearch(pid, on) {
   return ok;
 }
 
-/* The picked row exists so a player can be removed without searching for him again */
 function renderPicked() {
   var box = el("picked");
   if (!box) return;
