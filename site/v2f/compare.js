@@ -161,7 +161,7 @@ function renderCompare() {
 
   if (!selected.length) {
     hint.textContent =
-      "Search for a player, or tick one in the table below (up to " + MAX_COMPARE + ").";
+      "Search for a player, or add one from the table below (up to " + MAX_COMPARE + ").";
     return;
   }
 
@@ -180,6 +180,18 @@ function renderCompare() {
     return;
   }
 
+  // mark TD-only in compare
+  var t0 = [];
+  var tdOnly = picks.filter(function (p) { return (byId[p] || {}).incomplete; });
+  if (tdOnly.length) {
+    t0.push('<p class="warn-box"><strong>Floor, not a projection:</strong> ' +
+      tdOnly.map(function (p) { return (byId[p] || {}).name || p; }).join(", ") +
+      (tdOnly.length === 1 ? " has" : " have") +
+      " only touchdown odds posted so far. Everything below &mdash; percentiles, " +
+      "win probabilities, the distribution &mdash; is built from that floor and will " +
+      "understate " + (tdOnly.length === 1 ? "him" : "them") + ".</p>");
+  }
+
   // make table
   var metrics = [
     ["Projected",     function (r, h) { return r.total; },              pts1],
@@ -191,11 +203,12 @@ function renderCompare() {
     ["P(25+ pts)",    function (r, h) { return atLeast(h, 25, bw); },   pct0]
   ];
 
-  var t = ["<table><thead><tr><th class='nosort'>&nbsp;</th>"];
+  var t = t0.concat(["<table><thead><tr><th class='nosort'>&nbsp;</th>"]);
   picks.forEach(function (p) {
     var r = byId[p] || { name: p };
     t.push("<th class='nosort'>" + r.name +
-      "<br><span class='muted'>" + (r.position || "") + " " + (r.team || "") + "</span></th>");
+      "<br><span class='muted'>" + (r.position || "") + " " + (r.team || "") + "</span>" +
+      (r.incomplete ? "<br><span class='jeopardy'>TD only</span>" : "") + "</th>");
   });
   t.push("</tr></thead><tbody>");
   metrics.forEach(function (m) {
@@ -224,9 +237,17 @@ function renderCompare() {
     t.push("<h2>Head to head</h2>");
     t.push('<p class="h2h"><strong>' + lead[0].name + "</strong> outscores " +
       lead[1].name + " in <strong>" + Math.round(lead[2] * 100) +
-      "%</strong> of simulations.</p>");
+      "%</strong> of simulations</p>");
     if (Math.round(lead[2] * 100) === 50) {
       t.push('<p class="sub">Effectively a coin flip.</p>');
+    }
+    // note if only TD odds
+    if (pa.incomplete || pb.incomplete) {
+      var floored = [pa, pb].filter(function (x) { return x.incomplete; })
+                            .map(function (x) { return x.name; }).join(" and ");
+      t.push('<p class="sub jeopardy">NOTE: ' + floored +
+        " only " + (floored.indexOf(" and ") > 0 ? "have" : "has") +
+        " touchdown odds posted</p>");
     }
   } else if (picks.length > 2) {
     var ranked = picks.map(function (p) {
@@ -234,9 +255,6 @@ function renderCompare() {
     }).sort(function (a, b) { return b.field - a.field; });
 
     t.push("<h2>Start order</h2>");
-    t.push('<p class="sub">Ranked by how often each player outscores the others. ' +
-      "&ldquo;Best of group&rdquo; is how often he finishes top &mdash; upside, which can " +
-      "disagree with the ranking for a boom-or-bust player.</p>");
     t.push("<table><thead><tr>" +
       "<th class='nosort num'>#</th><th class='nosort'>Player</th>" +
       "<th class='nosort num'>Proj</th><th class='nosort num'>Beats the field</th>" +
@@ -248,7 +266,8 @@ function renderCompare() {
       t.push("<tr>" +
         "<td class='num'>" + (i + 1) + "</td>" +
         "<td>" + (i === 0 ? "<strong>" + r.name + "</strong>" : r.name) +
-          "<span class='muted'> " + (r.position || "") + " " + (r.team || "") + "</span></td>" +
+          "<span class='muted'> " + (r.position || "") + " " + (r.team || "") + "</span>" +
+          (r.incomplete ? " <span class='jeopardy'>TD only</span>" : "") + "</td>" +
         "<td class='num'>" + num(r.total, 1) + "</td>" +
         "<td class='num" + (i === 0 ? " best" : "") + "'>" +
           Math.round(x.field * 100) + "%</td>" +
@@ -259,7 +278,7 @@ function renderCompare() {
 
     // grid
     t.push("<details><summary>Full pairwise grid</summary>");
-    t.push('<p class="sub">Chance the player on the left outscores the player along the top.</p>');
+    t.push('<p class="sub">Chance the player on the left outscores the player along the top</p>');
     t.push("<table><thead><tr><th class='nosort'>beats &rarr;</th>");
     picks.forEach(function (p) {
       t.push("<th class='nosort'>" + ((byId[p] || {}).name || p) + "</th>");
@@ -280,12 +299,12 @@ function renderCompare() {
 
   if (picks.length > 1) {
     t.push('<p class="sub">From ' + (dists.draws || "?") +
-      " Monte Carlo draws per player, independent between players, binned to " +
-      bw + " point" + (bw === 1 ? "" : "s") + ".</p>");
+      " Monte Carlo draws per player, binned to " +
+      bw + " point" + (bw === 1 ? "" : "s") + "</p>");
   }
 
   if (missing.length) {
-    t.push('<p class="sub">No distribution published for ' + missing.length +
+    t.push('<p class="sub">No distribution for ' + missing.length +
       " selected player(s).</p>");
   }
   box.innerHTML = t.join("");
