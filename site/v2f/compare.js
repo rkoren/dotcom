@@ -275,9 +275,6 @@ function renderCompare() {
         "</tr>");
     });
     t.push("</tbody></table>");
-    if (ranked.some(function (x) { return (byId[x.id] || {}).incomplete; })) {
-      t.push('<p class="sub jeopardy">Note: players marked &ldquo;TD only&rdquo; </p>');
-    }
 
     // grid
     t.push("<details><summary>Full pairwise grid</summary>");
