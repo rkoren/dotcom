@@ -70,7 +70,15 @@ function chartRange(hists) {
   return [Math.max(0, lo - 1), hi + 1];
 }
 
-function distributionChart(picks, byId) {
+function distributionChart(allPicks, byId) {
+  // exclude td-only from distribution chart
+  var dropped = allPicks.filter(function (p) { return (byId[p] || {}).incomplete; });
+  var picks = allPicks.filter(function (p) { return !(byId[p] || {}).incomplete; });
+  if (!picks.length) {
+    return '<p class="sub">No distribution to plot: ' +
+      (dropped.length === 1 ? "that player has" : "those players have") +
+      " only TD odds, so the curve is just a spike at zero.</p>";
+  }
   var hists = picks.map(function (p) { return dists.hist[p]; });
   var r = chartRange(hists), lo = r[0], hi = r[1];
   var bw = (dists && dists.binWidth) || 1;
@@ -109,6 +117,11 @@ function distributionChart(picks, byId) {
     out.push('<span class="c' + (n % 8) + '">&#9632;</span> ' + ((byId[p] || {}).name || p) + " ");
   });
   out.push("</p>");
+  if (dropped.length) {
+    out.push('<p class="sub">Not plotted: ' +
+      dropped.map(function (p) { return (byId[p] || {}).name || p; }).join(", ") +
+      " (TD odds only)</p>");
+  }
   out.push('<p class="sub">Share of simulated outcomes at each point total</p>');
   return out.join("");
 }
