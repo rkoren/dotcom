@@ -70,3 +70,5 @@ td.stat { color: #444; }
 #board tbody tr:hover td { background: #ffffcc; }
 #board tr.detail td { background: #f0f0f8; font-size: 12px; padding: 4px 8px; }
 a.pname { color: #000; text-decoration: none; border-bottom: 1px dotted #999; }
+
+.cmpbar { position: sticky; top: 0; background: #fff; padding: 4px 0; z-index: 1; }

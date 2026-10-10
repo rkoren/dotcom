@@ -188,7 +188,12 @@ el("rows").addEventListener("change", function (e) {
   var pid = e.target && e.target.getAttribute && e.target.getAttribute("data-pid");
   if (!pid) return;
   if (!toggleSelected(pid, e.target.checked)) e.target.checked = false;
+  renderCompareCount();
+});
+
+el("cmpgo").addEventListener("click", function () {
   refreshSelection();
+  el("cmp").scrollIntoView();
 });
 
 bindSearch();
