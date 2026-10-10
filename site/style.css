@@ -66,3 +66,7 @@ td.stat { color: #444; }
   font-size: 12px;
   margin: 6px 0;
 }
+
+#board tbody tr:hover td { background: #ffffcc; }
+#board tr.detail td { background: #f0f0f8; font-size: 12px; padding: 4px 8px; }
+a.pname { color: #000; text-decoration: none; border-bottom: 1px dotted #999; }

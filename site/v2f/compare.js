@@ -213,6 +213,21 @@ function renderCompare() {
     ["P(25+ pts)",    function (r, h) { return atLeast(h, 25, bw); },   pct0]
   ];
 
+  STAT_COLS.forEach(function (c) {
+    var key = "s_" + c[0];
+    var applies = picks.some(function (p) {
+      var v = (byId[p] || {})[key];
+      return v !== null && v !== undefined && v !== 0;
+    });
+    if (!applies) return;
+    metrics.push([
+      c[2].charAt(0).toUpperCase() + c[2].slice(1),
+      function (r) { return r[key]; },
+      function (v) { return statCell(v, c[1]); },
+      { stat: true, lowerWins: c[0] === "pass_int" }
+    ]);
+  });
+
   var t = t0.concat(["<table><thead><tr><th class='nosort'>&nbsp;</th>"]);
   picks.forEach(function (p) {
     var r = byId[p] || { name: p };
@@ -221,9 +236,18 @@ function renderCompare() {
       (r.incomplete ? "<br><span class='jeopardy'>TD only</span>" : "") + "</th>");
   });
   t.push("</tr></thead><tbody>");
+  var statsHeaded = false;
   metrics.forEach(function (m) {
+    var opts = m[3] || {};
+    if (opts.stat && !statsHeaded) {
+      statsHeaded = true;
+      t.push("<tr class='grp'><th class='nosort' colspan='" + (picks.length + 1) + "'>Expected stats</th></tr>");
+    }
     var shown = picks.map(function (p) { return m[2](m[1](byId[p] || {}, dists.hist[p])); });
-    var lead = leaders(shown);
+    var filled = shown.filter(function (c) { return c !== ""; }).length;
+    var lead = opts.stat && filled < 2 ? [] : leaders(opts.lowerWins
+      ? shown.map(function (c) { return c === "" ? "" : String(-parseFloat(c)); })
+      : shown);
     t.push("<tr><td>" + m[0] + "</td>");
     shown.forEach(function (cell, i) {
       // bold all if tied

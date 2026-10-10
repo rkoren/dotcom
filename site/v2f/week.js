@@ -18,11 +18,33 @@ function pts(v) { return v === null || v === undefined ? "" : num(v, 1); }
 
 // stats columns
 var STAT_COLS = [
-  ["pass_yds", 0], ["pass_tds", 1], ["pass_int", 1],
-  ["rush_att", 1], ["rush_yds", 0],
-  ["rec", 1],      ["rec_yds", 0],
-  ["any_td", 1]
+  ["pass_yds", 0, "pass yds"], ["pass_tds", 1, "pass TD"], ["pass_int", 1, "INT"],
+  ["rush_att", 1, "carries"],  ["rush_yds", 0, "rush yds"],
+  ["rec", 1, "rec"],           ["rec_yds", 0, "rec yds"],
+  ["any_td", 1, "TD"]
 ];
+
+var expanded = new Set();
+
+function statLine(r) {
+  return STAT_COLS.filter(function (c) {
+    var v = r["s_" + c[0]];
+    return v !== null && v !== undefined && v !== 0;
+  }).map(function (c) {
+    return num(r["s_" + c[0]], c[1]) + " " + c[2];
+  }).join(" &middot; ");
+}
+
+function detailRow(r) {
+  var tr = document.createElement("tr");
+  tr.className = "detail";
+  tr.innerHTML = '<td colspan="' + (10 + STAT_COLS.length) + '">' +
+    "<strong>" + r.name + "</strong> " +
+    '<span class="muted">' + [r.position, r.team, r.opponent].filter(Boolean).join(" ") + "</span>" +
+    " &mdash; " + (statLine(r) || '<span class="muted">no stats priced</span>') +
+    (r.incomplete ? " <span class='jeopardy'>TD only</span>" : "") + "</td>";
+  return tr;
+}
 
 // mark off stats that aren't applied to players
 function statCell(v, dp) {
@@ -63,7 +85,7 @@ function drawRows() {
     tr.innerHTML =
       '<td><input type="checkbox" data-pid="' + r.player_id + '"' +
         (isSelected(r.player_id) ? " checked" : "") + "></td>" +
-      "<td>" + r.name + "</td>" +
+      '<td><a href="#" class="pname" data-expand="' + r.player_id + '">' + r.name + "</a></td>" +
       "<td>" + (r.position || "") + "</td>" +
       "<td>" + (r.team || "") + "</td>" +
       "<td>" + (r.opponent || "") + "</td>" +
@@ -76,6 +98,7 @@ function drawRows() {
       }).join("") +
       "<td>" + notes(r) + "</td>";
     tbody.appendChild(tr);
+    if (expanded.has(r.player_id)) tbody.appendChild(detailRow(r));
   });
   el("count").textContent = shown.length + " of " + all.length + " players";
 }
@@ -151,6 +174,14 @@ el("profile").addEventListener("change", function () {
 ["pos", "team", "minpts", "hideincomplete", "hideplayed"].forEach(function (id) {
   var ev = id === "team" || id === "minpts" ? "input" : "change";
   el(id).addEventListener(ev, applyFilters);
+});
+
+el("rows").addEventListener("click", function (e) {
+  var pid = e.target && e.target.getAttribute && e.target.getAttribute("data-expand");
+  if (!pid) return;
+  e.preventDefault();
+  if (expanded.has(pid)) expanded.delete(pid); else expanded.add(pid);
+  drawRows();
 });
 
 el("rows").addEventListener("change", function (e) {
