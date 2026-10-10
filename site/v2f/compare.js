@@ -142,13 +142,6 @@ function leaders(shown) {
 }
 
 // generate order of players on who to starts
-function beatsField(pid, picks) {
-  var others = picks.filter(function (p) { return p !== pid; });
-  if (!others.length) return null;
-  var sum = 0;
-  others.forEach(function (o) { sum += beats(dists.hist[pid], dists.hist[o]); });
-  return sum / others.length;
-}
 
 // P(this player is the compared highest scorer)
 function pBest(pid, picks) {
@@ -285,27 +278,23 @@ function renderCompare() {
     }
   } else if (picks.length > 2) {
     var ranked = picks.map(function (p) {
-      return { id: p, field: beatsField(p, picks), best: pBest(p, picks) };
-    }).sort(function (a, b) { return b.field - a.field; });
+      return { id: p, best: pBest(p, picks) };
+    }).sort(function (a, b) { return b.best - a.best; });
 
     t.push("<h2>Start order</h2>");
     t.push("<table><thead><tr>" +
       "<th class='nosort num'>#</th><th class='nosort'>Player</th>" +
-      "<th class='nosort num'>Proj</th><th class='nosort num'>Beats the field</th>" +
+      "<th class='nosort num'>Proj</th>" +
       "<th class='nosort num'>Best of group</th></tr></thead><tbody>");
-    var topBest = Math.max.apply(null, ranked.map(function (x) { return x.best; }));
     ranked.forEach(function (x, i) {
       var r = byId[x.id] || { name: x.id };
-      var upside = x.best === topBest && ranked[0].id !== x.id;
       t.push("<tr>" +
         "<td class='num'>" + (i + 1) + "</td>" +
         "<td>" + (i === 0 ? "<strong>" + r.name + "</strong>" : r.name) +
           "<span class='muted'> " + (r.position || "") + " " + (r.team || "") + "</span>" +
           (r.incomplete ? " <span class='jeopardy'>TD only</span>" : "") + "</td>" +
         "<td class='num'>" + num(r.total, 1) + "</td>" +
-        "<td class='num" + (i === 0 ? " best" : "") + "'>" +
-          Math.round(x.field * 100) + "%</td>" +
-        "<td class='num" + (upside ? " best" : "") + "'>" + Math.round(x.best * 100) + "%</td>" +
+        "<td class='num" + (i === 0 ? " best" : "") + "'>" + Math.round(x.best * 100) + "%</td>" +
         "</tr>");
     });
     t.push("</tbody></table>");
@@ -437,7 +426,15 @@ function searchMatches(q) {
   return out.map(function (m) { return m.row; });
 }
 
+function renderCompareCount() {
+  var b = el("cmpgo");
+  if (!b) return;
+  b.innerHTML = "Compare (" + selected.length + ")";
+  b.disabled = !selected.length;
+}
+
 function refreshSelection() {
+  renderCompareCount();
   drawRows();
   renderPicked();
   renderSearch();
@@ -446,7 +443,9 @@ function refreshSelection() {
 
 function toggleFromSearch(pid, on) {
   var ok = toggleSelected(pid, on);
-  refreshSelection();
+  renderCompareCount();
+  drawRows();
+  renderSearch();
   return ok;
 }
 
